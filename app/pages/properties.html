@@ -1,0 +1,78 @@
+<div class="top-actions-teleport" style="display:none;">
+    <button id="btn-new-property" class="btn btn-primary">
+        <span>+</span> Nueva Propiedad
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-header" style="gap: var(--space-md); flex-wrap: wrap;">
+        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+            <input type="text" id="prop-search" class="form-control" placeholder="Dirección o Rol...">
+        </div>
+        <div class="form-group" style="margin-bottom: 0; width: 150px;">
+            <select id="prop-status" class="form-control">
+                <option value="all">Todos</option>
+                <option value="available">Disponible</option>
+                <option value="reserved">Reservada</option>
+                <option value="sold">Vendida</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="properties-grid" class="grid-3">
+            <!-- Cards injected here -->
+        </div>
+        <div id="properties-empty" style="display: none;"></div>
+    </div>
+</div>
+
+<!-- Modal: New Property -->
+<div id="prop-modal" class="sidebar-overlay"
+    style="display: none; align-items: center; justify-content: center; z-index: 60;">
+    <div class="card" style="width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <div class="card-header">
+            <h3 class="card-title">Nueva Propiedad</h3>
+            <button class="icon-btn" id="btn-close-prop-modal">✕</button>
+        </div>
+        <div class="card-body">
+            <form id="prop-form">
+                <div class="form-group">
+                    <label class="form-label">Dirección</label>
+                    <input type="text" id="prop-address" class="form-control" required>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Rol</label>
+                        <input type="text" id="prop-rol" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Precio (UF)</label>
+                        <input type="number" id="prop-price" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Dormitorios</label>
+                        <input type="number" id="prop-rooms" class="form-control" value="2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Baños</label>
+                        <input type="number" id="prop-baths" class="form-control" value="1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Propietario (Cliente)</label>
+                    <select id="prop-owner" class="form-control" required>
+                        <!-- Populated from Clients -->
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Guardar Propiedad</button>
+            </form>
+        </div>
+    </div>
+</div>
+

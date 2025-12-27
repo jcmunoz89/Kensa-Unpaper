@@ -1,0 +1,82 @@
+<div class="editor-layout" style="display: flex; height: calc(100vh - 140px); gap: var(--space-md);">
+    <!-- Main Editor -->
+    <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="card-header" style="justify-content: space-between;">
+            <div>
+                <input type="text" id="doc-title" class="form-control"
+                    style="font-weight: 600; border: none; font-size: 1.1rem; padding: 0;" value="Nuevo Contrato">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                    Estado: <span id="doc-status" class="badge badge-warning">Borrador</span>
+                    <span id="doc-version" style="margin-left: 8px;">v1</span>
+                </div>
+            </div>
+            <div class="actions" style="display: flex; gap: var(--space-sm);">
+                <button id="btn-preview" class="btn btn-ghost">Vista Previa</button>
+                <button id="btn-save" class="btn btn-secondary">Guardar</button>
+                <button id="btn-publish" class="btn btn-primary">Publicar para Firma</button>
+            </div>
+        </div>
+        <div class="card-body" style="padding: 0; overflow-y: auto; background-color: #FAFAFA;">
+            <div id="editor-content" contenteditable="true" style="
+                max-width: 800px; 
+                margin: var(--space-lg) auto; 
+                background: white; 
+                min-height: 800px; 
+                padding: 40px; 
+                box-shadow: var(--shadow-sm); 
+                outline: none;
+                line-height: 1.6;
+            ">
+                <h2 style="text-align: center;">PROMESA DE COMPRAVENTA</h2>
+                <p><br></p>
+                <p>En Santiago de Chile, a {{Fecha Actual}}, entre las partes...</p>
+            </div>
+        </div>
+        <div class="card-footer"
+            style="padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--divider); font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+            <span id="doc-hash">Hash: Pendiente</span>
+            <span id="last-saved">No guardado</span>
+        </div>
+    </div>
+
+    <!-- Sidebar Tools -->
+    <div class="card" style="width: 300px; display: flex; flex-direction: column;">
+        <div class="card-header">
+            <h3 class="card-title">Herramientas</h3>
+        </div>
+        <div class="card-body" style="overflow-y: auto;">
+            <div style="margin-bottom: var(--space-lg);">
+                <h4 style="font-size: 0.9rem; margin-bottom: var(--space-sm);">Variables</h4>
+                <div class="variables-list" style="display: flex; flex-direction: column; gap: var(--space-xs);">
+                    <button class="btn btn-sm btn-secondary btn-insert-var" data-var="{{Cliente Nombre}}">Nombre
+                        Cliente</button>
+                    <button class="btn btn-sm btn-secondary btn-insert-var" data-var="{{Cliente RUT}}">RUT
+                        Cliente</button>
+                    <button class="btn btn-sm btn-secondary btn-insert-var" data-var="{{Propiedad Dirección}}">Dirección
+                        Propiedad</button>
+                    <button class="btn btn-sm btn-secondary btn-insert-var" data-var="{{Precio Venta}}">Precio
+                        Venta</button>
+                    <button class="btn btn-sm btn-secondary btn-insert-var" data-var="{{Fecha Actual}}">Fecha
+                        Actual</button>
+                </div>
+            </div>
+
+            <div>
+                <h4 style="font-size: 0.9rem; margin-bottom: var(--space-sm);">Cláusulas</h4>
+                <div class="clauses-list" style="display: flex; flex-direction: column; gap: var(--space-xs);">
+                    <button class="btn btn-sm btn-ghost btn-insert-clause"
+                        style="justify-content: flex-start; text-align: left;">1. Individualización</button>
+                    <button class="btn btn-sm btn-ghost btn-insert-clause"
+                        style="justify-content: flex-start; text-align: left;">2. Objeto del contrato</button>
+                    <button class="btn btn-sm btn-ghost btn-insert-clause"
+                        style="justify-content: flex-start; text-align: left;">3. Precio y forma de pago</button>
+                    <button class="btn btn-sm btn-ghost btn-insert-clause"
+                        style="justify-content: flex-start; text-align: left;">4. Multas y plazos</button>
+                    <button class="btn btn-sm btn-ghost btn-insert-clause"
+                        style="justify-content: flex-start; text-align: left;">5. Arbitraje</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

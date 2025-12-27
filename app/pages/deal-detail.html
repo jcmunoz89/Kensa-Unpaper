@@ -1,0 +1,117 @@
+<div id="deal-container">
+    <!-- Header -->
+    <div class="card" style="margin-bottom: var(--space-md);">
+        <div class="card-body">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h2 id="d-title" style="margin-bottom: 4px;">Cargando...</h2>
+                    <p id="d-subtitle" style="color: var(--text-muted);">...</p>
+                </div>
+                <div style="text-align: right;">
+                    <div id="d-amount" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">UF 0</div>
+                    <span id="d-stage" class="badge badge-info">Etapa</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-3" style="grid-template-columns: 2fr 1fr;">
+        <!-- Left Column -->
+        <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+
+            <!-- Documents Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Documentos</h3>
+                    <button id="btn-create-doc" class="btn btn-sm btn-secondary">+ Crear</button>
+                </div>
+                <div class="card-body">
+                    <div id="docs-list" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        <!-- Docs injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payments Section -->
+            <div class="card" id="payments-card">
+                <div class="card-header">
+                    <h3 class="card-title">Pagos y Garantías</h3>
+                    <button id="btn-add-payment" class="btn btn-sm btn-secondary">+ Registrar Pago</button>
+                </div>
+                <div class="card-body">
+                    <div class="empty-state" style="padding: var(--space-md);">
+                        <p>No hay pagos registrados.</p>
+                    </div>
+                    <div id="payments-list"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column -->
+        <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+
+            <!-- Timeline -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Línea de Tiempo</h3>
+                </div>
+                <div class="card-body">
+                    <div class="timeline"
+                        style="border-left: 2px solid var(--border); padding-left: var(--space-md); margin-left: var(--space-sm);">
+                        <div style="margin-bottom: var(--space-md); position: relative;">
+                            <div
+                                style="position: absolute; left: -21px; top: 0; width: 12px; height: 12px; background: var(--primary); border-radius: 50%;">
+                            </div>
+                            <div style="font-weight: 600; font-size: 0.875rem;">Negocio Creado</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);" id="d-created-at">-</div>
+                        </div>
+                        <!-- More events -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Cliente</h3>
+                </div>
+                <div class="card-body">
+                    <div id="d-client-info">Cargando...</div>
+                    <a href="#" id="link-client" class="btn btn-sm btn-ghost" style="margin-top: var(--space-sm);">Ver
+                        Perfil</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal: Payment -->
+<div id="payment-modal" class="sidebar-overlay"
+    style="display: none; align-items: center; justify-content: center; z-index: 80;">
+    <div class="card" style="width: 300px;">
+        <div class="card-header">
+            <h3 class="card-title">Registrar Pago</h3>
+            <button class="icon-btn" id="btn-close-pay">✕</button>
+        </div>
+        <div class="card-body">
+            <form id="payment-form">
+                <div class="form-group">
+                    <label class="form-label">Tipo</label>
+                    <select id="pay-type" class="form-control">
+                        <option value="Reserva">Reserva</option>
+                        <option value="Pie">Pie</option>
+                        <option value="Gastos Op">Gastos Operacionales</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Monto (CLP)</label>
+                    <input type="number" id="pay-amount" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Registrar</button>
+            </form>
+        </div>
+    </div>
+</div>

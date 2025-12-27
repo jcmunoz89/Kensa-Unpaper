@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PropSaaS - Gestión Inmobiliaria</title>
+    <link rel="stylesheet" href="css/styles.css?v=5">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css?v=4">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app" class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z"
+                            stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M9 22V12H15V22" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                    <span class="brand-name">PropSaaS</span>
+                </div>
+                <button id="close-sidebar" class="icon-btn mobile-only" aria-label="Cerrar menú">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <span class="icon">📊</span> Dashboard
+                </a>
+                <a href="#deals" class="nav-item" data-page="deals">
+                    <span class="icon">💰</span> Negocios
+                </a>
+                <a href="#properties" class="nav-item" data-page="properties">
+                    <span class="icon">🏠</span> Propiedades
+                </a>
+                <a href="#clients" class="nav-item" data-page="clients">
+                    <span class="icon">👥</span> Clientes
+                </a>
+                <a href="#documents" class="nav-item" data-page="documents">
+                    <span class="icon">📄</span> Documentos
+                </a>
+                <a href="#signatures" class="nav-item" data-page="signatures">
+                    <span class="icon">✍️</span> Firmas
+                </a>
+                <a href="#notary" class="nav-item" data-page="notary">
+                    <span class="icon">⚖️</span> Notaría
+                </a>
+                <div class="nav-divider"></div>
+                <a href="#audit" class="nav-item" data-page="audit">
+                    <span class="icon">🛡️</span> Auditoría
+                </a>
+                <a href="#admin" class="nav-item" data-page="admin">
+                    <span class="icon">⚙️</span> Configuración
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar">U</div>
+                    <div class="user-details">
+                        <span id="current-user-name">Usuario</span>
+                        <span id="current-user-role" class="role-badge">Agente</span>
+                    </div>
+                </div>
+                <button id="logout-btn" class="logout-btn" title="Cerrar Sesión">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <button id="menu-toggle" class="icon-btn mobile-only" aria-label="Abrir menú">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+                <h1 id="page-title">Dashboard</h1>
+                <div class="top-actions" id="top-actions">
+                    <!-- Dynamic actions injected here -->
+                </div>
+            </header>
+
+            <div id="content-area" class="content-area">
+                <!-- Page content will be loaded here -->
+                <div class="loading-spinner">Cargando...</div>
+            </div>
+        </main>
+
+        <!-- Overlay for mobile sidebar -->
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js?v=3"></script>
+</body>
+
+</html>

@@ -1,0 +1,50 @@
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Suscripción y Facturación</h3>
+    </div>
+    <div class="card-body">
+        <div class="grid-2">
+            <div
+                style="padding: var(--space-lg); background-color: #F8FAFC; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                <h4 style="color: var(--text-muted); font-size: 0.875rem; text-transform: uppercase;">Plan Actual</h4>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--secondary); margin: 8px 0;">Plan Pro</div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span class="badge badge-success">Activo</span>
+                    <span style="color: var(--text-muted); font-size: 0.875rem;">Renueva el 01/02/2026</span>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: var(--space-md);">
+                <button class="btn btn-secondary" id="btn-change-plan">Cambiar Plan</button>
+                <button class="btn btn-ghost" style="color: var(--danger);">Cancelar Suscripción</button>
+            </div>
+        </div>
+
+        <h4 style="margin-top: var(--space-xl); margin-bottom: var(--space-md);">Historial de Pagos (Mock)</h4>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                    <th>Factura</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>01/01/2026</td>
+                    <td>$29.990</td>
+                    <td><span class="badge badge-success">Pagado</span></td>
+                    <td><a href="#" class="btn btn-sm btn-ghost">Descargar</a></td>
+                </tr>
+                <tr>
+                    <td>01/12/2025</td>
+                    <td>$29.990</td>
+                    <td><span class="badge badge-success">Pagado</span></td>
+                    <td><a href="#" class="btn btn-sm btn-ghost">Descargar</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+

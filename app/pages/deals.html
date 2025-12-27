@@ -1,0 +1,67 @@
+<div class="top-actions-teleport" style="display:none;">
+    <button id="btn-new-deal" class="btn btn-primary">
+        <span>+</span> Nuevo Negocio
+    </button>
+</div>
+
+<div class="kanban-container" style="overflow-x: auto; height: calc(100vh - 140px); padding-bottom: var(--space-md);">
+    <div id="kanban-board" style="display: flex; gap: var(--space-md); height: 100%; min-width: 1000px;">
+        <!-- Columns injected here -->
+    </div>
+</div>
+
+<!-- Modal: New Deal -->
+<div id="deal-modal" class="sidebar-overlay"
+    style="display: none; align-items: center; justify-content: center; z-index: 60;">
+    <div class="card" style="width: 100%; max-width: 500px;">
+        <div class="card-header">
+            <h3 class="card-title">Nuevo Negocio</h3>
+            <button class="icon-btn" id="btn-close-deal-modal">✕</button>
+        </div>
+        <div class="card-body">
+            <form id="deal-form">
+                <div class="form-group">
+                    <label class="form-label">Nombre del Negocio</label>
+                    <input type="text" id="deal-name" class="form-control" placeholder="Ej: Venta Casa La Florida"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Cliente</label>
+                    <select id="deal-client" class="form-control" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Propiedad</label>
+                    <select id="deal-property" class="form-control" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Valor Acordado (UF)</label>
+                    <input type="number" id="deal-value" class="form-control" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Crear Negocio</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Move Deal -->
+<div id="move-modal" class="sidebar-overlay"
+    style="display: none; align-items: center; justify-content: center; z-index: 70;">
+    <div class="card" style="width: 300px;">
+        <div class="card-header">
+            <h3 class="card-title">Mover a Etapa</h3>
+            <button class="icon-btn" id="btn-close-move-modal">✕</button>
+        </div>
+        <div class="card-body">
+            <input type="hidden" id="move-deal-id">
+            <div class="form-group">
+                <select id="move-stage-select" class="form-control"></select>
+            </div>
+            <button id="btn-confirm-move" class="btn btn-primary" style="width: 100%;">Mover</button>
+        </div>
+    </div>
+</div>
+

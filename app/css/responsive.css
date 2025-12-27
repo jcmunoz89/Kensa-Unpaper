@@ -1,0 +1,177 @@
+/* Mobile Breakpoint < 768px */
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 280px;
+        transform: translateX(-100%);
+        box-shadow: var(--shadow-lg);
+        z-index: 100;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 90;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        backdrop-filter: blur(4px);
+    }
+
+    .sidebar-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .mobile-only {
+        display: block !important;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    .main-content {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .content-area {
+        padding: var(--space-md);
+    }
+
+    .content-area {
+        padding: var(--space-md);
+    }
+
+    /* Dashboard KPIs: 2x2 on Mobile */
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: var(--space-md);
+    }
+
+    /* Bottom Section: Stacked */
+    .grid-2,
+    .grid-3 {
+        grid-template-columns: 1fr !important;
+        gap: var(--space-md);
+    }
+
+    /* Fix for Quick Actions cut off */
+    .card-body {
+        overflow-x: hidden;
+        /* Prevent horizontal scroll inside cards */
+    }
+
+    .top-bar {
+        padding: 0 var(--space-md);
+    }
+
+    /* Cards on Mobile */
+    .card {
+        margin-bottom: var(--space-md);
+        box-shadow: var(--shadow-md);
+        /* Slightly stronger shadow for depth */
+        border: 1px solid var(--border);
+    }
+
+    .card-header {
+        padding: var(--space-md);
+    }
+
+    .card-body {
+        padding: var(--space-md);
+    }
+
+    /* Kanban Mobile: Horizontal Scroll Snap */
+    #kanban-board {
+        display: flex;
+        flex-direction: row;
+        /* Force row */
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: var(--space-md);
+        padding-bottom: var(--space-md);
+        /* Space for scrollbar */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #kanban-board>div {
+        min-width: 85vw;
+        /* Show mostly one column */
+        scroll-snap-align: center;
+        flex-shrink: 0;
+    }
+
+    /* Table to Card Pattern */
+    .data-table {
+        border: 0;
+    }
+
+    .data-table thead {
+        display: none;
+    }
+
+    .data-table tr {
+        display: block;
+        margin-bottom: var(--space-md);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .data-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--divider);
+        padding: 12px var(--space-md);
+        text-align: right;
+        font-size: 0.9rem;
+    }
+
+    .data-table td:last-child {
+        border-bottom: 0;
+        justify-content: flex-end;
+    }
+
+    .data-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--secondary);
+        text-align: left;
+        margin-right: var(--space-md);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Hide role text on mobile */
+    .role-text {
+        display: none !important;
+    }
+
+    .p-role-btn {
+        padding: 0.85rem !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100%;
+        display: flex !important;
+    }
+}

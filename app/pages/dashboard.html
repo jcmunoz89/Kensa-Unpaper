@@ -1,0 +1,67 @@
+<div class="grid-4">
+    <div class="card">
+        <div class="card-body">
+            <h3 class="card-title" style="color: var(--text-muted); font-size: 0.875rem;">Negocios Activos</h3>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--secondary); margin-top: 8px;" id="kpi-deals">0
+            </div>
+            <div style="font-size: 0.875rem; color: var(--success); margin-top: 4px;">+2 esta semana</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h3 class="card-title" style="color: var(--text-muted); font-size: 0.875rem;">Tareas Pendientes</h3>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--secondary); margin-top: 8px;" id="kpi-tasks">0
+            </div>
+            <div style="font-size: 0.875rem; color: var(--warning); margin-top: 4px;">3 vencidas</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h3 class="card-title" style="color: var(--text-muted); font-size: 0.875rem;">Firmas en Curso</h3>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--secondary); margin-top: 8px;"
+                id="kpi-signatures">0</div>
+            <div style="font-size: 0.875rem; color: var(--info); margin-top: 4px;">Esperando firma</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h3 class="card-title" style="color: var(--text-muted); font-size: 0.875rem;">Monto en Pipeline</h3>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--secondary); margin-top: 8px;" id="kpi-amount">$0
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2" style="margin-top: var(--space-lg); grid-template-columns: 2fr 1fr;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Actividad Reciente</h3>
+        </div>
+        <div class="card-body">
+            <div id="recent-activity-list">
+                <!-- Activity Items -->
+                <div class="empty-state">
+                    <p>No hay actividad reciente.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Accesos Rápidos</h3>
+        </div>
+        <div class="card-body" style="display: flex; flex-direction: column; gap: var(--space-md);">
+            <a href="#clients" class="btn btn-secondary" style="justify-content: flex-start;">
+                <span>👥</span> Nuevo Cliente
+            </a>
+            <a href="#properties" class="btn btn-secondary" style="justify-content: flex-start;">
+                <span>🏠</span> Nueva Propiedad
+            </a>
+            <a href="#deals" class="btn btn-secondary" style="justify-content: flex-start;">
+                <span>💰</span> Nuevo Negocio
+            </a>
+        </div>
+    </div>
+</div>
+

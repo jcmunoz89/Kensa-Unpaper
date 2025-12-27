@@ -1,0 +1,38 @@
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Simulador de Webhooks</h3>
+    </div>
+    <div class="card-body">
+        <p style="margin-bottom: var(--space-md); color: var(--text-muted);">
+            Utilice esta herramienta para simular eventos entrantes desde proveedores externos (Pasarela de Pagos,
+            Notaría, etc).
+        </p>
+
+        <form id="webhook-form">
+            <div class="form-group">
+                <label class="form-label">Tipo de Evento</label>
+                <select id="event-type" class="form-control">
+                    <option value="payment.success">payment.success</option>
+                    <option value="payment.failed">payment.failed</option>
+                    <option value="signature.completed">signature.completed</option>
+                    <option value="notary.approved">notary.approved</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Payload (JSON)</label>
+                <textarea id="event-payload" class="form-control" rows="8" style="font-family: monospace;">{
+  "eventId": "evt_123456789",
+  "timestamp": "2025-12-24T12:00:00Z",
+  "data": {
+    "amount": 50000,
+    "currency": "CLP"
+  }
+}</textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Simular Evento</button>
+        </form>
+    </div>
+</div>
+

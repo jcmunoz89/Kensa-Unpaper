@@ -1,0 +1,288 @@
+<div id="signatures-container">
+    <!-- Header / Actions -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+        <h2 id="page-title-sig">Gestión de Firmas</h2>
+        <button id="btn-new-request" class="btn btn-primary">
+            <span>+</span> Crear Trámite Express
+        </button>
+    </div>
+
+    <!-- View: List (Default) -->
+    <div id="view-list" class="card">
+        <div class="card-header">
+            <h3 class="card-title">Solicitudes en Curso</h3>
+        </div>
+        <div class="card-body">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Trámite</th>
+                        <th>Tipo</th>
+                        <th>Participantes</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="signatures-list"></tbody>
+            </table>
+            <div id="sig-empty" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- View: Wizard (Hidden) -->
+    <div id="view-wizard" class="card" style="display: none; max-width: 600px; margin: 0 auto;">
+        <div class="card-header" style="justify-content: flex-start; gap: var(--space-md);">
+            <button id="btn-back-list" class="btn btn-sm btn-ghost">← Volver</button>
+            <h3 class="card-title">Nuevo Trámite</h3>
+        </div>
+        <div class="card-body">
+
+            <!-- Step 1: Transaction Type -->
+            <div class="wizard-step" id="step-1">
+                <h4 style="margin-bottom: var(--space-md);">¿Qué tipo de gestión necesitas?</h4>
+
+                <div class="radio-group" style="display: flex; flex-direction: column; gap: var(--space-md);">
+                    <label class="radio-card"
+                        style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer;">
+                        <input type="radio" name="wiz-type" value="cert" disabled>
+                        <div>
+                            <div style="font-weight: 600;">Certificación Notarial</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Requiere notaría</div>
+                        </div>
+                    </label>
+
+                    <label class="radio-card"
+                        style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer;">
+                        <input type="radio" name="wiz-type" value="proto" checked>
+                        <div>
+                            <div style="font-weight: 600;">Protocolización Notarial</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Requiere notaría</div>
+                        </div>
+                    </label>
+
+                    <label class="radio-card"
+                        style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer;">
+                        <input type="radio" name="wiz-type" value="simple">
+                        <div>
+                            <div style="font-weight: 600;">Firma Electrónica Simple (FES)</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Sin Notaría</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div style="margin-top: var(--space-xl); display: flex; justify-content: flex-end;">
+                    <button id="btn-next-1" class="btn btn-primary">Siguiente</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Participants -->
+            <div class="wizard-step" id="step-2" style="display: none;">
+                <h4 style="margin-bottom: var(--space-md);">Participantes</h4>
+
+                <!-- Participant List (Summary) -->
+                <div id="participants-list-container">
+                    <div id="payment-warning"
+                        style="display: none; background-color: #FEF2F2; color: #991B1B; padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); font-size: 0.9rem; font-weight: 600;">
+                        Solo se ha definido un <span id="payment-total">0</span>% del pago
+                    </div>
+
+                    <div id="participants-list"
+                        style="display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-md);">
+                        <!-- Dynamic list items will go here -->
+                    </div>
+
+                    <button id="btn-show-add-participant" class="btn btn-secondary"
+                        style="width: 100%; margin-bottom: var(--space-lg); border-style: dashed;">
+                        + Agregar participante
+                    </button>
+
+                    <div style="display: flex; justify-content: space-between;">
+                        <button id="btn-prev-2" class="btn btn-ghost">Atrás</button>
+                        <button id="btn-next-2" class="btn btn-primary">Siguiente</button>
+                    </div>
+                </div>
+
+                <!-- Add/Edit Participant Form (Hidden by default) -->
+                <div id="participant-form" style="display: none;">
+                    <h5 style="color: var(--primary); margin-bottom: var(--space-md);">Nuevo Participante</h5>
+
+                    <div class="form-group">
+                        <label class="form-label">Correo electrónico</label>
+                        <input type="email" id="p-email" class="form-control" placeholder="tucorreo@mail.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nombre completo</label>
+                        <input type="text" id="p-name" class="form-control" placeholder="Nombre completo">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo de documento</label>
+                        <div style="display: flex; gap: var(--space-md);">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="p-id-type" value="rut" checked> RUT
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="p-id-type" value="passport"> Pasaporte
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">RUT</label>
+                        <input type="text" id="p-rut" class="form-control" placeholder="11111111-1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Número de teléfono (WhatsApp)</label>
+                        <input type="tel" id="p-phone" class="form-control" placeholder="+56900000000">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">¿Qué rol desempeñará?</label>
+                        <div style="display: flex; gap: var(--space-md);">
+                            <button type="button" class="btn btn-secondary p-role-btn" data-role="payer"
+                                title="Pagador">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                                    <line x1="2" y1="10" x2="22" y2="10" />
+                                </svg>
+                                <span class="role-text">Pagador</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary p-role-btn" data-role="signer_payer"
+                                title="Firmante y Pagador">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    <line x1="2" y1="10" x2="22" y2="10" opacity="0.5" />
+                                </svg>
+                                <span class="role-text">Firmante y Pagador</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary p-role-btn active" data-role="signer"
+                                title="Firmante">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                                    <path d="M2 2l7.586 7.586" />
+                                    <circle cx="11" cy="11" r="2" />
+                                </svg>
+                                <span class="role-text">Firmante</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Orden de firma</label>
+                        <input type="number" id="p-order" class="form-control" value="1" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">¿Realizará pago?</label>
+                        <div style="display: flex; gap: var(--space-md);">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="p-pay" value="0" checked> No
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="p-pay" value="50"> 50%
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="p-pay" value="100"> 100%
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="p-doc-type-group" style="display: none;">
+                        <label class="form-label">Tipo de Documento Tributario</label>
+                        <div style="display: flex; gap: var(--space-md);">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="p-doc-type" value="boleta" checked> Boleta
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="p-doc-type" value="factura"> Factura
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: var(--space-md); margin-top: var(--space-lg);">
+                        <button id="btn-cancel-participant" class="btn btn-ghost" style="flex: 1;">Cancelar</button>
+                        <button id="btn-save-participant" class="btn btn-primary" style="flex: 1;">Guardar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Documents -->
+            <div class="wizard-step" id="step-3" style="display: none;">
+                <h4 style="margin-bottom: var(--space-md);">Adjuntar Documentos</h4>
+
+                <div class="form-group">
+                    <label class="form-label">Nombre del trámite (opcional)</label>
+                    <input type="text" id="wiz-name" class="form-control" placeholder="Ingresa nombre del trámite">
+                </div>
+
+                <div
+                    style="background-color: #F8FAFC; padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-lg); font-size: 0.9rem; color: var(--text-muted);">
+                    <p style="margin-bottom: 8px;">Para trámites notariados, se deben subir:</p>
+                    <ul style="padding-left: 20px; margin-bottom: 0;">
+                        <li>El contrato a firmar</li>
+                        <li>Cédulas de los firmantes</li>
+                        <li>E-RUT si corresponde</li>
+                    </ul>
+                </div>
+
+                <div
+                    style="display: flex; flex-direction: column; gap: var(--space-md); margin-bottom: var(--space-xl);">
+                    <button class="btn btn-secondary" style="justify-content: center; padding: var(--space-md);">
+                        🔗 Unir archivos
+                    </button>
+                    <button class="btn btn-secondary"
+                        style="justify-content: center; padding: var(--space-md); border: 2px dashed var(--primary);">
+                        ☁️ Subir archivo
+                    </button>
+                </div>
+
+                <div style="display: flex; justify-content: space-between;">
+                    <button id="btn-clean" class="btn btn-primary" style="background-color: #0EA5E9;">Limpiar</button>
+                    <button id="btn-finish" class="btn btn-primary"
+                        style="background-color: #0EA5E9;">Finalizar</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Assign Signatures Modal -->
+<div id="modal-assign-sig" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3 class="modal-title">¿Quién debe firmar aquí?</h3>
+            <button class="btn-close" id="btn-close-assign">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-muted); margin-bottom: var(--space-md);">Selecciona el firmante que quieres
+                agregar al documento.</p>
+
+            <div id="assign-participants-list"
+                style="display: flex; flex-direction: column; gap: var(--space-md); margin-bottom: var(--space-lg);">
+                <!-- Dynamic Radio Buttons -->
+            </div>
+
+            <button id="btn-confirm-assign" class="btn btn-primary"
+                style="width: 100%; justify-content: center; background-color: #0EA5E9;">Agregar</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .radio-card:hover {
+        background-color: #F8FAFC;
+        border-color: var(--primary);
+    }
+
+    .radio-card input:checked+div {
+        color: var(--primary);
+    }
+</style>
