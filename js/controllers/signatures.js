@@ -136,6 +136,44 @@ const SignaturesController = {
             }
         };
 
+        const updatePaymentOptions = (role) => {
+            const lbl0 = document.getElementById('lbl-pay-0');
+            const lbl50 = document.getElementById('lbl-pay-50');
+            const lbl100 = document.getElementById('lbl-pay-100');
+            const radio0 = document.querySelector('input[name="p-pay"][value="0"]');
+            const radio100 = document.querySelector('input[name="p-pay"][value="100"]');
+
+            if (!lbl0 || !lbl50 || !lbl100) return;
+
+            if (role === 'signer') {
+                // Signer: Only "No" allowed
+                lbl0.style.display = 'flex';
+                lbl50.style.display = 'none';
+                lbl100.style.display = 'none';
+                if (radio0) radio0.checked = true;
+            } else {
+                // Payer / Signer & Payer: Only 50% / 100% allowed
+                lbl0.style.display = 'none';
+                lbl50.style.display = 'flex';
+                lbl100.style.display = 'flex';
+
+                // If "No" was checked, switch to 100% default
+                if (radio0 && radio0.checked) {
+                    if (radio100) radio100.checked = true;
+                }
+            }
+
+            // Toggle Signature Order visibility
+            const orderGroup = document.getElementById('p-order-group');
+            if (orderGroup) {
+                orderGroup.style.display = (role === 'payer') ? 'none' : 'block';
+            }
+
+            // Trigger change event to update doc type visibility
+            const checked = document.querySelector('input[name="p-pay"]:checked');
+            if (checked) checked.dispatchEvent(new Event('change'));
+        };
+
         const renderParticipants = () => {
             if (!pList) return;
             pList.innerHTML = '';
@@ -198,6 +236,17 @@ const SignaturesController = {
 
                 if (pListContainer) pListContainer.style.display = 'none';
                 if (pForm) pForm.style.display = 'block';
+
+                // Reset to default role (Signer) and update options
+                document.querySelectorAll('.p-role-btn').forEach(b => {
+                    b.classList.remove('active', 'btn-primary');
+                    b.classList.add('btn-secondary');
+                    if (b.dataset.role === 'signer') {
+                        b.classList.add('active', 'btn-primary');
+                        b.classList.remove('btn-secondary');
+                    }
+                });
+                updatePaymentOptions('signer');
             });
         }
 
@@ -265,6 +314,8 @@ const SignaturesController = {
 
                 btn.classList.remove('btn-secondary');
                 btn.classList.add('active', 'btn-primary');
+
+                updatePaymentOptions(btn.dataset.role);
             });
         });
 
