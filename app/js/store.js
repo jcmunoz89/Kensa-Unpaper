@@ -1,7 +1,7 @@
 /**
  * Store.js
  * Handles persistence using localStorage with Tenant Scoping.
- * Key format: PropSaaS:{tenant}:{entity} (Stores array of items)
+ * Key format: KensaUnpaper:{tenant}:{entity} (Stores array of items)
  */
 
 const Store = {
@@ -12,7 +12,7 @@ const Store = {
 
     init() {
         // Try to recover session
-        const session = localStorage.getItem('PropSaaS:session');
+        const session = localStorage.getItem('KensaUnpaper:session');
         if (session) {
             const { tenant, user } = JSON.parse(session);
             this.state.tenant = tenant;
@@ -23,14 +23,14 @@ const Store = {
     login(tenant, user) {
         this.state.tenant = tenant;
         this.state.user = user;
-        localStorage.setItem('PropSaaS:session', JSON.stringify({ tenant, user }));
+        localStorage.setItem('KensaUnpaper:session', JSON.stringify({ tenant, user }));
         this.seedIfEmpty();
     },
 
     logout() {
         this.state.tenant = null;
         this.state.user = null;
-        localStorage.removeItem('PropSaaS:session');
+        localStorage.removeItem('KensaUnpaper:session');
         window.location.hash = '#login';
     },
 
@@ -46,7 +46,7 @@ const Store = {
 
     _getKey(entity) {
         if (!this.state.tenant) throw new Error("No tenant selected");
-        return `PropSaaS:${this.state.tenant}:${entity}`;
+        return `KensaUnpaper:${this.state.tenant}:${entity}`;
     },
 
     getAll(entity) {
@@ -67,7 +67,7 @@ const Store = {
         item.createdAt = new Date().toISOString();
         item.updatedAt = new Date().toISOString();
         item.createdBy = this.state.user ? this.state.user.id : 'system';
-        
+
         items.push(item);
         this._save(entity, items);
         return item;
@@ -100,9 +100,9 @@ const Store = {
 
         // Seed Users if empty
         if (this.getAll('users').length === 0) {
-            this.add('users', { id: 'u1', name: 'Admin User', role: 'admin', email: 'admin@propsaas.com' });
-            this.add('users', { id: 'u2', name: 'Juan Agente', role: 'agent', email: 'juan@propsaas.com' });
-            this.add('users', { id: 'u3', name: 'Maria Supervisor', role: 'supervisor', email: 'maria@propsaas.com' });
+            this.add('users', { id: 'u1', name: 'Admin User', role: 'admin', email: 'admin@kensa-unpaper.com' });
+            this.add('users', { id: 'u2', name: 'Juan Agente', role: 'agent', email: 'juan@kensa-unpaper.com' });
+            this.add('users', { id: 'u3', name: 'Maria Supervisor', role: 'supervisor', email: 'maria@kensa-unpaper.com' });
         }
 
         // Seed Stages
@@ -118,10 +118,10 @@ const Store = {
             ];
             this._save('stages', stages);
         }
-        
+
         // Seed Plans
         if (this.getAll('plans').length === 0) {
-             this.add('plans', { id: 'p1', name: 'Pro', price: 29990, status: 'active' });
+            this.add('plans', { id: 'p1', name: 'Pro', price: 29990, status: 'active' });
         }
     }
 };
