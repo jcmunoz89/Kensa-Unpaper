@@ -19,6 +19,7 @@ const Router = {
         'signatures': { view: 'pages/signatures.html', controller: 'signatures.js' },
         'notary': { view: 'pages/notary.html', controller: 'notary.js' },
         'audit': { view: 'pages/audit.html', controller: 'audit.js' },
+        'users': { view: 'pages/users.html', controller: 'users.js', title: 'Administrador de Usuarios' },
         'admin': { view: 'pages/admin.html', controller: 'admin.js' },
         'billing': { view: 'pages/billing.html', controller: 'billing.js' },
         'webhook-simulator': { view: 'pages/webhook-simulator.html', controller: 'webhook-simulator.js' }
@@ -68,7 +69,7 @@ const Router = {
             document.getElementById('content-area').innerHTML = html;
 
             // Update Title
-            const title = route.charAt(0).toUpperCase() + route.slice(1).replace('-', ' ');
+            const title = config.title || (route.charAt(0).toUpperCase() + route.slice(1).replace('-', ' '));
             document.getElementById('page-title').innerText = title;
 
             // Load & Execute Controller
