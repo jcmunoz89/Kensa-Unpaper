@@ -45,16 +45,6 @@ const SignaturesController = {
             document.querySelectorAll('.btn-sign').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const id = e.target.dataset.id;
-                    Store.update('documents', id, { signed: true, signedAt: new Date().toISOString() });
-                    UI.showToast('Documento firmado exitosamente', 'success');
-                    this.renderList();
-                });
-            });
-            */
-
-            document.querySelectorAll('.btn-sign').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = e.target.dataset.id;
                     this.openSignaturePad(id);
                 });
             });
