@@ -276,6 +276,37 @@
     </div>
 </div>
 
+<!-- Signature Pad Modal -->
+<div id="modal-signature-pad" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px; width: 95%;">
+        <div class="modal-header">
+            <h3 class="modal-title">Firmar Documento</h3>
+            <button class="btn-close" id="btn-close-sig-pad">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-muted); margin-bottom: var(--space-md);">
+                Dibuja tu firma en el recuadro a continuación.
+            </p>
+
+            <div class="signature-pad-wrapper"
+                style="border: 2px dashed var(--border); border-radius: var(--radius-md); position: relative; height: 200px; background-color: #fff; touch-action: none;">
+                <canvas id="signature-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+                <div id="sig-placeholder"
+                    style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-light); pointer-events: none; opacity: 0.5;">
+                    Firmar aquí
+                </div>
+            </div>
+
+            <div style="display: flex; gap: var(--space-md); margin-top: var(--space-lg);">
+                <button id="btn-clear-sig" class="btn btn-ghost" style="color: var(--danger);">Borrar</button>
+                <div style="flex: 1;"></div>
+                <button id="btn-cancel-sig" class="btn btn-secondary">Cancelar</button>
+                <button id="btn-confirm-sig" class="btn btn-primary">Confirmar Firma</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .radio-card:hover {
         background-color: #F8FAFC;

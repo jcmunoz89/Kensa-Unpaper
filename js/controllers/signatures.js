@@ -50,7 +50,121 @@ const SignaturesController = {
                     this.renderList();
                 });
             });
+            */
+
+            document.querySelectorAll('.btn-sign').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.dataset.id;
+                    this.openSignaturePad(id);
+                });
+            });
         }
+    },
+
+    openSignaturePad(docId) {
+        const modal = document.getElementById('modal-signature-pad');
+        const canvas = document.getElementById('signature-canvas');
+        const ctx = canvas ? canvas.getContext('2d') : null;
+        const btnClear = document.getElementById('btn-clear-sig');
+        const btnCancel = document.getElementById('btn-cancel-sig');
+        const btnClose = document.getElementById('btn-close-sig-pad');
+        const btnConfirm = document.getElementById('btn-confirm-sig');
+        const placeholder = document.getElementById('sig-placeholder');
+
+        if (!modal || !canvas) return;
+
+        // Reset & Show
+        modal.style.display = 'flex';
+
+        // Adjust Canvas Size to match display size
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous
+        if (placeholder) placeholder.style.display = 'block';
+
+        let isDrawing = false;
+        let hasSignature = false;
+
+        const startDrawing = (e) => {
+            isDrawing = true;
+            hasSignature = true;
+            if (placeholder) placeholder.style.display = 'none';
+            draw(e);
+        };
+
+        const stopDrawing = () => {
+            isDrawing = false;
+            ctx.beginPath();
+        };
+
+        const draw = (e) => {
+            if (!isDrawing) return;
+
+            // Get correct coordinates
+            const rect = canvas.getBoundingClientRect();
+            let x, y;
+
+            if (e.type.includes('touch')) {
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        };
+
+        // Event Listeners - Mouse
+        canvas.onmousedown = startDrawing;
+        canvas.onmouseup = stopDrawing;
+        canvas.onmousemove = draw;
+        canvas.onmouseleave = stopDrawing;
+
+        // Event Listeners - Touch
+        canvas.ontouchstart = (e) => { e.preventDefault(); startDrawing(e); };
+        canvas.ontouchend = (e) => { e.preventDefault(); stopDrawing(); };
+        canvas.ontouchmove = (e) => { e.preventDefault(); draw(e); };
+
+        // Actions
+        const closePad = () => {
+            modal.style.display = 'none';
+        };
+
+        const clearPad = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasSignature = false;
+            if (placeholder) placeholder.style.display = 'block';
+        };
+
+        const confirmPad = () => {
+            if (!hasSignature) {
+                UI.showToast('Por favor, dibuja tu firma.', 'warning');
+                return;
+            }
+
+            // Save logic
+            Store.update('documents', docId, { signed: true, signedAt: new Date().toISOString() });
+            UI.showToast('Documento firmado exitosamente', 'success');
+            closePad();
+            this.renderList();
+        };
+
+        // Attach one-time listeners (clearing old ones first if needed, 
+        // but simpler here to just overwrite onclick which is safer for this scope)
+
+        btnClear.onclick = clearPad;
+        btnCancel.onclick = closePad;
+        btnClose.onclick = closePad;
+        btnConfirm.onclick = confirmPad;
     },
 
     setupWizard() {
