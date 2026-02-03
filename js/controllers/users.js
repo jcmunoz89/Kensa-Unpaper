@@ -1,20 +1,20 @@
-import Store from '../store.js';
+import Storage from '../storage.js';
+import Auth from '../auth.js';
 import UI from '../ui.js';
 
 const roleLabels = {
     admin: 'Administrador',
-    supervisor: 'Supervisor',
-    agent: 'Agente'
+    broker: 'Broker'
 };
 
 const roleBadges = {
     admin: 'danger',
-    supervisor: 'info',
-    agent: 'neutral'
+    broker: 'info'
 };
 
 const UsersController = {
     init() {
+        this.tenantId = Auth.getTenantId();
         const topActions = document.getElementById('top-actions');
         const localActions = document.querySelector('.top-actions-teleport');
         topActions.innerHTML = '';
@@ -50,18 +50,36 @@ const UsersController = {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
 
-                const id = document.getElementById('user-id').value;
-                const data = {
-                    name: document.getElementById('user-name').value.trim(),
-                    email: document.getElementById('user-email').value.trim(),
-                    role: document.getElementById('user-role').value
-                };
+                const membershipId = document.getElementById('user-id').value;
+                const name = document.getElementById('user-name').value.trim();
+                const email = document.getElementById('user-email').value.trim();
+                const role = document.getElementById('user-role').value;
 
-                if (id) {
-                    Store.update('users', id, data);
-                    UI.showToast('Usuario actualizado correctamente', 'success');
+                if (!this.tenantId) return;
+
+                const membershipScope = Storage.tenantScope(this.tenantId);
+
+                if (membershipId) {
+                    const membership = Storage.findById(membershipScope, 'memberships', membershipId);
+                    if (membership) {
+                        Storage.update('global', 'users', membership.uid, { displayName: name, email });
+                        Storage.update(membershipScope, 'memberships', membershipId, { role });
+                        UI.showToast('Usuario actualizado correctamente', 'success');
+                    }
                 } else {
-                    Store.add('users', data);
+                    const uid = `u_${crypto.randomUUID()}`;
+                    Storage.add('global', 'users', {
+                        id: uid,
+                        uid,
+                        displayName: name,
+                        email,
+                        role
+                    });
+                    Storage.add(membershipScope, 'memberships', {
+                        uid,
+                        role,
+                        status: 'active'
+                    });
                     UI.showToast('Usuario creado correctamente', 'success');
                 }
 
@@ -71,23 +89,26 @@ const UsersController = {
         }
     },
 
-    openModal(user = null) {
+    openModal(record = null) {
         const modal = document.getElementById('user-modal');
         const form = document.getElementById('user-form');
         if (!modal || !form) return;
 
         form.reset();
-        document.getElementById('user-id').value = user ? user.id : '';
-        document.getElementById('user-name').value = user ? user.name : '';
-        document.getElementById('user-email').value = user ? user.email : '';
-        document.getElementById('user-role').value = user ? user.role : 'agent';
-        document.getElementById('user-modal-title').innerText = user ? 'Editar Usuario' : 'Nuevo Usuario';
+        document.getElementById('user-id').value = record ? record.membershipId : '';
+        document.getElementById('user-name').value = record ? record.displayName : '';
+        document.getElementById('user-email').value = record ? record.email : '';
+        document.getElementById('user-role').value = record ? record.role : 'broker';
+        document.getElementById('user-modal-title').innerText = record ? 'Editar Usuario' : 'Nuevo Usuario';
 
         modal.style.display = 'flex';
     },
 
     renderUsers() {
-        const users = Store.getAll('users');
+        if (!this.tenantId) return;
+        const users = Storage.list('global', 'users');
+        const membershipScope = Storage.tenantScope(this.tenantId);
+        const memberships = Storage.list(membershipScope, 'memberships');
         const tbody = document.getElementById('users-list');
         const empty = document.getElementById('users-empty');
         const searchInput = document.getElementById('user-search');
@@ -96,14 +117,26 @@ const UsersController = {
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        const filtered = users
-            .filter(user => {
-                const name = (user.name || '').toLowerCase();
-                const email = (user.email || '').toLowerCase();
-                const role = (user.role || '').toLowerCase();
+        const records = memberships.map(m => {
+            const user = users.find(u => u.uid === m.uid);
+            return {
+                membershipId: m.id,
+                uid: m.uid,
+                role: m.role,
+                status: m.status,
+                displayName: user ? user.displayName : 'Sin nombre',
+                email: user ? user.email : '-'
+            };
+        });
+
+        const filtered = records
+            .filter(u => {
+                const name = (u.displayName || '').toLowerCase();
+                const email = (u.email || '').toLowerCase();
+                const role = (u.role || '').toLowerCase();
                 return name.includes(search) || email.includes(search) || role.includes(search);
             })
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
 
         if (filtered.length === 0) {
             tbody.parentElement.style.display = 'none';
@@ -115,16 +148,16 @@ const UsersController = {
         tbody.parentElement.style.display = 'table';
         empty.style.display = 'none';
 
-        const currentUser = Store.getUser();
+        const session = Auth.getSession();
 
         filtered.forEach(user => {
             const tr = document.createElement('tr');
             const roleLabel = roleLabels[user.role] || user.role || 'Sin rol';
             const badgeClass = roleBadges[user.role] || 'neutral';
-            const isCurrent = currentUser && currentUser.id === user.id;
+            const isCurrent = session && session.uid === user.uid;
 
             tr.innerHTML = `
-                <td data-label="Nombre"><strong>${user.name || '-'}</strong></td>
+                <td data-label="Nombre"><strong>${user.displayName || '-'}</strong></td>
                 <td data-label="Email">${user.email || '-'}</td>
                 <td data-label="Rol"><span class="badge badge-${badgeClass}">${roleLabel}</span></td>
                 <td data-label="Acciones">
@@ -139,10 +172,10 @@ const UsersController = {
             const deleteBtn = tr.querySelector('[data-action="delete"]');
             deleteBtn.addEventListener('click', () => {
                 if (isCurrent) return;
-                const confirmed = window.confirm(`¿Eliminar a ${user.name || 'este usuario'}?`);
+                const confirmed = window.confirm(`¿Eliminar a ${user.displayName || 'este usuario'} del tenant?`);
                 if (!confirmed) return;
-                Store.remove('users', user.id);
-                UI.showToast('Usuario eliminado', 'success');
+                Storage.remove(membershipScope, 'memberships', user.membershipId);
+                UI.showToast('Usuario eliminado del tenant', 'success');
                 this.renderUsers();
             });
 

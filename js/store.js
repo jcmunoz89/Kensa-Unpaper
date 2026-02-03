@@ -14,16 +14,25 @@ const Store = {
         // Try to recover session
         const session = localStorage.getItem('KensaUnpaper:session');
         if (session) {
-            const { tenant, user } = JSON.parse(session);
-            this.state.tenant = tenant;
-            this.state.user = user;
+            const data = JSON.parse(session);
+            this.state.tenant = data.tenantId || data.tenant || null;
+            if (data.user) {
+                this.state.user = data.user;
+            } else if (data.uid) {
+                this.state.user = {
+                    id: data.uid,
+                    name: data.displayName || 'Usuario',
+                    role: data.role || 'broker',
+                    email: data.email || ''
+                };
+            }
         }
     },
 
     login(tenant, user) {
         this.state.tenant = tenant;
         this.state.user = user;
-        localStorage.setItem('KensaUnpaper:session', JSON.stringify({ tenant, user }));
+        localStorage.setItem('KensaUnpaper:session', JSON.stringify({ tenantId: tenant, user }));
         this.seedIfEmpty();
     },
 
@@ -46,7 +55,7 @@ const Store = {
 
     _getKey(entity) {
         if (!this.state.tenant) throw new Error("No tenant selected");
-        return `KensaUnpaper:${this.state.tenant}:${entity}`;
+        return `KensaUnpaper:tenant:${this.state.tenant}:${entity}`;
     },
 
     getAll(entity) {

@@ -1,4 +1,7 @@
 import Store from '../store.js';
+import Storage from '../storage.js';
+import Auth from '../auth.js';
+import Audit from '../audit.js';
 import UI from '../ui.js';
 
 const SignaturesController = {
@@ -8,47 +11,69 @@ const SignaturesController = {
     },
 
     renderList() {
-        // For MVP, we'll just list 'documents' that are published as 'requests'
-        // In a real app, we'd have a separate 'signature_requests' collection.
-        const docs = Store.getAll('documents').filter(d => d.status === 'published');
+        const session = Auth.getSession();
+        const tenantId = session ? session.tenantId : null;
+        if (!tenantId) return;
+
+        const scope = Storage.tenantScope(tenantId);
+        const requests = Storage.list(scope, 'signature_requests');
         const tbody = document.getElementById('signatures-list');
         const empty = document.getElementById('sig-empty');
 
         if (!tbody) return;
 
-        if (docs.length === 0) {
+        if (requests.length === 0) {
             tbody.parentElement.style.display = 'none';
             empty.style.display = 'block';
             empty.innerHTML = UI.createEmptyState('No hay solicitudes de firma.', '✍️');
-        } else {
-            tbody.parentElement.style.display = 'table';
-            empty.style.display = 'none';
-            tbody.innerHTML = '';
-
-            docs.forEach(doc => {
-                const tr = document.createElement('tr');
-                const isSigned = doc.signed === true;
-                const typeLabel = doc.notarized ? 'Protocolización' : 'Firma Simple';
-
-                tr.innerHTML = `
-                    <td><strong>${doc.title}</strong></td>
-                    <td><span class="badge badge-neutral">${typeLabel}</span></td>
-                    <td>1 Participante</td> <!-- Mock -->
-                    <td><span class="badge badge-${isSigned ? 'success' : 'warning'}">${isSigned ? 'Firmado' : 'Pendiente'}</span></td>
-                    <td>
-                        ${!isSigned ? `<button class="btn btn-sm btn-primary btn-sign" data-id="${doc.id}">Firmar</button>` : '✅'}
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            document.querySelectorAll('.btn-sign').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = e.target.dataset.id;
-                    this.openSignaturePad(id);
-                });
-            });
+            return;
         }
+
+        tbody.parentElement.style.display = 'table';
+        empty.style.display = 'none';
+        tbody.innerHTML = '';
+
+        requests.forEach(req => {
+            const tr = document.createElement('tr');
+            const isSigned = req.status === 'signed';
+            tr.innerHTML = `
+                <td><strong>${req.participant?.name || 'Firmante'}</strong></td>
+                <td><span class="badge badge-neutral">${req.role || 'signer'}</span></td>
+                <td>${req.participant?.email || '-'}</td>
+                <td><span class="badge badge-${isSigned ? 'success' : 'warning'}\">${isSigned ? 'Firmado' : 'Pendiente'}</span></td>
+                <td>
+                    ${!isSigned ? `<button class="btn btn-sm btn-secondary btn-sign" data-id="${req.id}">Generar Link</button>` : '✅'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.querySelectorAll('.btn-sign').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.target.dataset.id;
+                const req = requests.find(r => r.id === id);
+                if (!req) return;
+                const token = this.createSigningToken(req, tenantId);
+                const link = `${window.location.origin}${window.location.pathname}#sign?token=${token}`;
+                window.prompt('Link de firma externa', link);
+            });
+        });
+    },
+
+    createSigningToken(signatureRequest, tenantId) {
+        const token = crypto.randomUUID();
+        Storage.add('global', 'signingTokens', {
+            id: token,
+            token,
+            tenantId,
+            procedureId: signatureRequest.procedureId,
+            signatureRequestId: signatureRequest.id,
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+            status: 'active',
+            attempts: 0
+        });
+        Audit.append(tenantId, { action: 'SIGN_TOKEN_CREATED', procedureId: signatureRequest.procedureId, meta: { signatureRequestId: signatureRequest.id } });
+        return token;
     },
 
     openSignaturePad(docId) {

@@ -1,0 +1,103 @@
+<div id="procedure-detail">
+    <div class="card" style="margin-bottom: var(--space-md);">
+        <div class="card-body" style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-md);">
+            <div>
+                <h2 id="procedure-title">Trámite</h2>
+                <p id="procedure-subtitle" style="color: var(--text-muted);">-</p>
+            </div>
+            <div style="text-align: right;">
+                <div id="procedure-status" class="badge badge-info">Estado</div>
+                <div style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">ID: <span id="procedure-id"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2" style="grid-template-columns: 2fr 1fr;">
+        <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Resumen</h3>
+                    <div id="procedure-actions" style="display: flex; gap: var(--space-sm);"></div>
+                </div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div>
+                            <label class="form-label">Política Identidad</label>
+                            <p id="procedure-identity">-</p>
+                            <label class="form-label">Política Pago</label>
+                            <p id="procedure-payment">-</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Notaría</label>
+                            <p id="procedure-notary">-</p>
+                            <label class="form-label">Notario Asignado</label>
+                            <p id="procedure-notary-user">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Notary Packet</h3>
+                </div>
+                <div class="card-body" id="procedure-packet">
+                    <!-- Packet info -->
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Firmas</h3>
+                </div>
+                <div class="card-body">
+                    <div id="signature-requests" style="display: flex; flex-direction: column; gap: var(--space-sm);"></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Timeline</h3>
+                </div>
+                <div class="card-body">
+                    <div id="procedure-timeline" style="display: flex; flex-direction: column; gap: var(--space-sm);"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Access Grants</h3>
+                </div>
+                <div class="card-body">
+                    <div id="grant-list" style="display: flex; flex-direction: column; gap: var(--space-sm);"></div>
+                    <button id="btn-create-grant" class="btn btn-secondary" style="margin-top: var(--space-sm); width: 100%;">Crear Grant Notario</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Grant Notary -->
+<div id="grant-modal" class="sidebar-overlay" style="display: none; align-items: center; justify-content: center; z-index: 60;">
+    <div class="card" style="width: 100%; max-width: 420px;">
+        <div class="card-header">
+            <h3 class="card-title">Asignar Notario</h3>
+            <button class="icon-btn" id="btn-close-grant">✕</button>
+        </div>
+        <div class="card-body">
+            <form id="grant-form">
+                <div class="form-group">
+                    <label class="form-label">Notario</label>
+                    <select id="grant-notary" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Expira en (días)</label>
+                    <input type="number" id="grant-expiry" class="form-control" value="7" min="1">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Crear Grant</button>
+            </form>
+        </div>
+    </div>
+</div>

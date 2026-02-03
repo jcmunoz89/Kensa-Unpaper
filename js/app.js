@@ -4,8 +4,11 @@
  */
 import Store from './store.js';
 import Router from './router.js';
+import Auth from './auth.js';
+import Seed from './seed.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    Seed.init();
     Store.init();
     Router.init();
 
@@ -15,11 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Update User Info in Sidebar
-    const user = Store.getUser();
-    if (user) {
-        document.getElementById('current-user-name').innerText = user.name;
-        document.getElementById('current-user-role').innerText = user.role;
-        document.querySelector('.avatar').innerText = user.name.charAt(0).toUpperCase();
+    const session = Auth.getSession();
+    if (session) {
+        const displayName = session.displayName || session.uid || 'Usuario';
+        const roleLabel = session.isKensaAdmin ? 'Kensa Admin' : session.role;
+        document.getElementById('current-user-name').innerText = displayName;
+        document.getElementById('current-user-role').innerText = roleLabel;
+        document.querySelector('.avatar').innerText = displayName.charAt(0).toUpperCase();
+        applyNavVisibility(session);
     }
 
     // Mobile Sidebar Toggle
@@ -46,3 +52,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+function applyNavVisibility(session) {
+    document.querySelectorAll('[data-visible-for]').forEach(item => {
+        const roles = item.dataset.visibleFor.split(',').map(r => r.trim());
+        const isVisible = session.isKensaAdmin || roles.includes(session.role);
+        const tenantOnly = item.dataset.tenantOnly === 'true';
+        const hideForKensa = session.isKensaAdmin && tenantOnly && !session.tenantId;
+        item.style.display = isVisible ? '' : 'none';
+        if (hideForKensa) item.style.display = 'none';
+    });
+}

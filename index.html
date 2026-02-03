@@ -37,35 +37,44 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">📊</span> Dashboard
                 </a>
-                <a href="#deals" class="nav-item" data-page="deals">
+                <a href="#deals" class="nav-item" data-page="deals" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">💰</span> Negocios
                 </a>
-                <a href="#properties" class="nav-item" data-page="properties">
+                <a href="#procedures" class="nav-item" data-page="procedures" data-visible-for="admin,broker" data-tenant-only="true">
+                    <span class="icon">🧾</span> Trámites
+                </a>
+                <a href="#properties" class="nav-item" data-page="properties" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">🏠</span> Propiedades
                 </a>
-                <a href="#clients" class="nav-item" data-page="clients">
+                <a href="#clients" class="nav-item" data-page="clients" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">👥</span> Clientes
                 </a>
-                <a href="#documents" class="nav-item" data-page="documents">
+                <a href="#documents" class="nav-item" data-page="documents" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">📄</span> Documentos
                 </a>
-                <a href="#signatures" class="nav-item" data-page="signatures">
+                <a href="#signatures" class="nav-item" data-page="signatures" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">✍️</span> Firmas
                 </a>
-                <a href="#notary" class="nav-item" data-page="notary">
+                <a href="#notary" class="nav-item" data-page="notary" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">⚖️</span> Notaría
                 </a>
                 <div class="nav-divider"></div>
-                <a href="#audit" class="nav-item" data-page="audit">
+                <a href="#notary-inbox" class="nav-item" data-page="notary-inbox" data-visible-for="notary,admin">
+                    <span class="icon">📥</span> Bandeja Notario
+                </a>
+                <a href="#audit" class="nav-item" data-page="audit" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">🛡️</span> Auditoría
                 </a>
-                <a href="#users" class="nav-item" data-page="users">
+                <a href="#users" class="nav-item" data-page="users" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">🧑‍💼</span> Administrador de Usuarios
                 </a>
-                <a href="#admin" class="nav-item" data-page="admin">
+                <a href="#billing" class="nav-item" data-page="billing" data-visible-for="admin,broker">
+                    <span class="icon">💳</span> Facturación
+                </a>
+                <a href="#admin" class="nav-item" data-page="admin" data-visible-for="admin,broker" data-tenant-only="true">
                     <span class="icon">⚙️</span> Configuración
                 </a>
             </nav>

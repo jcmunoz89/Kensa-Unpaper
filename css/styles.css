@@ -233,6 +233,22 @@ button {
     background-attachment: fixed;
 }
 
+/* External Signing View */
+body.sign-view .sidebar,
+body.sign-view .top-bar,
+body.sign-view .sidebar-overlay {
+    display: none;
+}
+
+body.sign-view .main-content {
+    width: 100%;
+}
+
+body.sign-view .content-area {
+    padding: var(--space-xl);
+    background-image: none;
+}
+
 /* Utilities */
 .hidden {
     display: none !important;

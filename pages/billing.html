@@ -3,6 +3,11 @@
         <h3 class="card-title">Suscripción y Facturación</h3>
     </div>
     <div class="card-body">
+        <div id="billing-tenant-select-wrapper" class="form-group" style="max-width: 320px; margin-bottom: var(--space-md); display: none;">
+            <label class="form-label">Tenant</label>
+            <select id="billing-tenant-select" class="form-control"></select>
+        </div>
+
         <div class="grid-2">
             <div
                 style="padding: var(--space-lg); background-color: #F8FAFC; border-radius: var(--radius-md); border: 1px solid var(--border);">
@@ -45,6 +50,21 @@
                 </tr>
             </tbody>
         </table>
+
+        <h4 style="margin-top: var(--space-xl); margin-bottom: var(--space-md);">Eventos de Facturación</h4>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Procedure</th>
+                        <th>Monto</th>
+                    </tr>
+                </thead>
+                <tbody id="billing-events-list"></tbody>
+            </table>
+        </div>
+        <div id="billing-events-empty" style="display: none;"></div>
     </div>
 </div>
-

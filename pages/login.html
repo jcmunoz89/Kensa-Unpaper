@@ -16,17 +16,31 @@
         <div class="card-body">
             <form id="login-form">
                 <div class="form-group">
-                    <label class="form-label">Tenant (Organización)</label>
-                    <input type="text" id="tenant-input" class="form-control" value="demo-propiedades" required>
+                    <label class="form-label">Modo de Acceso</label>
+                    <select id="login-mode" class="form-control">
+                        <option value="tenant">Corredora (Broker/Admin)</option>
+                        <option value="kensa_admin">Kensa Admin (Global)</option>
+                        <option value="notary">Notario (Global)</option>
+                    </select>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Usuario (Simulado)</label>
-                    <select id="user-select" class="form-control">
-                        <option value="u1">Admin User (Administrador)</option>
-                        <option value="u2">Juan Agente (Agente)</option>
-                        <option value="u3">Maria Supervisor (Supervisor)</option>
-                    </select>
+                <div id="tenant-fields">
+                    <div class="form-group">
+                        <label class="form-label">Tenant (Organización)</label>
+                        <select id="tenant-select" class="form-control"></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Usuario</label>
+                        <select id="member-select" class="form-control"></select>
+                    </div>
+                </div>
+
+                <div id="global-fields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Usuario Global</label>
+                        <select id="global-user-select" class="form-control"></select>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar al Sistema</button>
@@ -34,4 +48,3 @@
         </div>
     </div>
 </div>
-

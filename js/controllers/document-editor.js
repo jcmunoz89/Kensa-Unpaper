@@ -1,4 +1,7 @@
 import Store from '../store.js';
+import Storage from '../storage.js';
+import Auth from '../auth.js';
+import Audit from '../audit.js';
 import UI from '../ui.js';
 
 const DocumentEditorController = {
@@ -11,6 +14,8 @@ const DocumentEditorController = {
         this.currentDoc = null;
         this.dealId = dealId;
         this.editor = document.getElementById('editor-content');
+        this.tenantId = Auth.getTenantId();
+        this.scope = this.tenantId ? Storage.tenantScope(this.tenantId) : null;
 
         if (docId) {
             this.currentDoc = Store.getById('documents', docId);
@@ -41,6 +46,11 @@ const DocumentEditorController = {
                 this.save(true);
             }
         });
+
+        const btnVoid = document.getElementById('btn-void');
+        if (btnVoid) {
+            btnVoid.addEventListener('click', () => this.voidVersion());
+        }
 
         document.getElementById('btn-preview').addEventListener('click', () => {
             const content = this.editor.innerHTML;
@@ -95,6 +105,20 @@ const DocumentEditorController = {
             this.currentDoc = Store.add('documents', data);
         }
 
+        if (isPublishing && this.scope) {
+            Storage.add(this.scope, 'document_versions', {
+                documentId: this.currentDoc.id,
+                dealId: data.dealId,
+                title: data.title,
+                version: data.version,
+                hash: docHash,
+                content: content,
+                status: 'published',
+                createdBy: Auth.getSession()?.uid || 'system'
+            });
+            Audit.append(this.tenantId, { action: 'DOCUMENT_PUBLISHED', meta: { documentId: this.currentDoc.id, version: data.version } });
+        }
+
         this.updateStatusUI(this.currentDoc);
         UI.showToast(isPublishing ? 'Documento Publicado y Bloqueado' : 'Borrador guardado', 'success');
     },
@@ -109,13 +133,41 @@ const DocumentEditorController = {
             document.getElementById('doc-hash').innerText = 'SHA-256: ' + doc.hash.substring(0, 16) + '...';
         }
 
+        const btnVoid = document.getElementById('btn-void');
+
         if (doc.status === 'published') {
             this.editor.contentEditable = false;
             this.editor.style.backgroundColor = '#F3F4F6';
             document.getElementById('btn-save').disabled = true;
             document.getElementById('btn-publish').disabled = true;
             document.getElementById('btn-publish').innerText = 'Enviado a Firma';
+            if (btnVoid) btnVoid.style.display = 'inline-flex';
+        } else {
+            if (btnVoid) btnVoid.style.display = 'none';
         }
+    },
+
+    voidVersion() {
+        if (!this.scope || !this.currentDoc || !this.currentDoc.hash) return;
+        const reason = window.prompt('Motivo de anulación');
+        if (!reason) return;
+
+        const versions = Storage.list(this.scope, 'document_versions');
+        const version = versions.find(v => v.documentId === this.currentDoc.id && v.hash === this.currentDoc.hash);
+        if (!version) {
+            UI.showToast('No se encontró la versión publicada', 'error');
+            return;
+        }
+
+        Storage.update(this.scope, 'document_versions', version.id, {
+            voidedAt: new Date().toISOString(),
+            voidedByUid: Auth.getSession()?.uid || 'system',
+            voidReason: reason,
+            voidScope: 'future_use_only'
+        });
+
+        Audit.append(this.tenantId, { action: 'VOID_DOC_VERSION', meta: { documentId: this.currentDoc.id, version: version.version } });
+        UI.showToast('Versión anulada', 'success');
     }
 };
 

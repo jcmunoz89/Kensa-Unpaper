@@ -1,0 +1,68 @@
+<div class="card" style="max-width: 720px; margin: 0 auto;">
+    <div class="card-header">
+        <h3 class="card-title">Firma Externa</h3>
+    </div>
+    <div class="card-body">
+        <div id="sign-status" class="empty-state" style="display:none;"></div>
+
+        <div id="sign-content">
+            <div class="card" style="margin-bottom: var(--space-md); border: 1px dashed var(--border);">
+                <div class="card-body">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600;" id="sign-title">Trámite</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);" id="sign-subtitle">-</div>
+                        </div>
+                        <span id="sign-procedure-status" class="badge badge-info">Estado</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sign-identity" class="card" style="margin-bottom: var(--space-md);">
+                <div class="card-header">
+                    <h3 class="card-title">Verificación de Identidad</h3>
+                </div>
+                <div class="card-body" style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+                    <button id="btn-identity-clave" class="btn btn-secondary">Validar con Clave Única</button>
+                    <button id="btn-identity-bio" class="btn btn-secondary">Validar con Biometría</button>
+                    <span id="identity-status" class="badge badge-warning" style="margin-left: auto;">Pendiente</span>
+                </div>
+            </div>
+
+            <div id="sign-payment" class="card" style="margin-bottom: var(--space-md);">
+                <div class="card-header">
+                    <h3 class="card-title">Pago</h3>
+                </div>
+                <div class="card-body" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600;">Transbank (Mock)</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);" id="payment-amount">Monto: -</div>
+                    </div>
+                    <button id="btn-pay" class="btn btn-primary">Pagar</button>
+                </div>
+            </div>
+
+            <div id="sign-signature" class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Firma</h3>
+                </div>
+                <div class="card-body">
+                    <div class="signature-pad-wrapper"
+                        style="border: 2px dashed var(--border); border-radius: var(--radius-md); position: relative; height: 200px; background-color: #fff; touch-action: none;">
+                        <canvas id="sign-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+                        <div id="sign-placeholder"
+                            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-light); pointer-events: none; opacity: 0.5;">
+                            Firmar aquí
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: var(--space-md); margin-top: var(--space-md);">
+                        <button id="btn-sign-clear" class="btn btn-ghost" style="color: var(--danger);">Borrar</button>
+                        <div style="flex: 1;"></div>
+                        <button id="btn-sign-confirm" class="btn btn-primary">Confirmar Firma</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

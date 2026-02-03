@@ -1,4 +1,7 @@
 import Store from '../store.js';
+import Storage from '../storage.js';
+import Auth from '../auth.js';
+import Audit from '../audit.js';
 import UI from '../ui.js';
 
 const DealDetailController = {
@@ -6,6 +9,8 @@ const DealDetailController = {
         const params = new URLSearchParams(window.location.hash.split('?')[1]);
         const id = params.get('id');
         const deal = Store.getById('deals', id);
+        const tenantId = Auth.getTenantId();
+        const scope = tenantId ? Storage.tenantScope(tenantId) : null;
 
         if (!deal) {
             document.getElementById('deal-container').innerHTML = UI.createEmptyState('Negocio no encontrado', '❌');
@@ -67,6 +72,58 @@ const DealDetailController = {
         document.getElementById('btn-create-doc').addEventListener('click', () => {
             window.location.hash = `document-editor?dealId=${deal.id}`;
         });
+
+        const btnProcedure = document.getElementById('btn-create-procedure');
+        if (btnProcedure) {
+            btnProcedure.addEventListener('click', () => {
+                if (!tenantId || !scope) return;
+                const versions = Storage.list(scope, 'document_versions').filter(v => v.dealId === deal.id && !v.voidedAt);
+                const latestVersion = versions.sort((a, b) => (b.version || 0) - (a.version || 0))[0];
+
+                let versionRef = latestVersion;
+                if (!versionRef) {
+                    const publishedDocs = Store.getAll('documents').filter(d => d.dealId === deal.id && d.status === 'published');
+                    const doc = publishedDocs[0];
+                    if (doc) {
+                        versionRef = { id: doc.id, title: doc.title, version: doc.version, hash: doc.hash };
+                    }
+                }
+
+                if (!versionRef) {
+                    UI.showToast('Debe publicar un documento antes de crear el trámite', 'warning');
+                    return;
+                }
+
+                const property = Store.getById('properties', deal.propertyId);
+                const packet = {
+                    landlord: property ? { name: client ? client.name : 'Cliente', rut: client ? client.rut : '-' } : null,
+                    tenant: client ? { name: client.name, rut: client.rut, email: client.email, phone: client.phone } : null,
+                    property: property ? { address: property.address, rol: property.rol, price: property.price } : null,
+                    deal: { id: deal.id, name: deal.name, value: deal.value },
+                    documentVersionRef: {
+                        id: versionRef.id,
+                        title: versionRef.title,
+                        version: versionRef.version,
+                        hash: versionRef.hash
+                    }
+                };
+
+                const procedure = Storage.add(scope, 'procedures', {
+                    status: 'draft',
+                    identityPolicy: { mode: 'either' },
+                    paymentPolicy: { requireBeforeSignature: false },
+                    notaryRequired: true,
+                    notaryPacket: packet,
+                    assignedNotary: null,
+                    flags: { identityOk: false, paymentsOk: true, signaturesOk: false, notaryOk: false },
+                    createdBy: Auth.getSession()?.uid || 'system'
+                });
+
+                Audit.append(tenantId, { action: 'PROCEDURE_CREATED', procedureId: procedure.id, meta: { dealId: deal.id } });
+                UI.showToast('Trámite creado', 'success');
+                window.location.hash = `procedure-detail?id=${procedure.id}`;
+            });
+        }
 
         // Payment Logic
         const btnPay = document.getElementById('btn-add-payment');

@@ -1,0 +1,89 @@
+<div class="top-actions-teleport" style="display:none;">
+    <button id="btn-new-procedure" class="btn btn-primary">
+        <span>+</span> Nuevo Trámite
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="form-group" style="margin-bottom: 0; flex: 1; max-width: 320px;">
+            <input type="text" id="procedure-search" class="form-control" placeholder="Buscar por negocio o cliente...">
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table class="data-table" id="procedures-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Negocio</th>
+                        <th>Cliente</th>
+                        <th>Estado</th>
+                        <th>Notario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="procedures-list">
+                    <!-- Rows injected here -->
+                </tbody>
+            </table>
+        </div>
+        <div id="procedures-empty" style="display: none;"></div>
+    </div>
+</div>
+
+<!-- Modal: New Procedure -->
+<div id="procedure-modal" class="sidebar-overlay"
+    style="display: none; align-items: center; justify-content: center; z-index: 60;">
+    <div class="card" style="width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto;">
+        <div class="card-header">
+            <h3 class="card-title">Nuevo Trámite</h3>
+            <button class="icon-btn" id="btn-close-procedure">✕</button>
+        </div>
+        <div class="card-body">
+            <form id="procedure-form">
+                <div class="form-group">
+                    <label class="form-label">Negocio</label>
+                    <select id="procedure-deal" class="form-control" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Versión de Documento</label>
+                    <select id="procedure-doc-version" class="form-control" required></select>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Política de Identidad</label>
+                        <select id="procedure-identity" class="form-control">
+                            <option value="none">Sin verificación</option>
+                            <option value="either">Clave Única o Biometría</option>
+                            <option value="both">Clave Única + Biometría</option>
+                            <option value="claveunica_only">Solo Clave Única</option>
+                            <option value="biometrics_only">Solo Biometría</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Pago antes de firma</label>
+                        <select id="procedure-payment" class="form-control">
+                            <option value="false">No requerido</option>
+                            <option value="true">Requerido</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Requiere Notaría</label>
+                    <select id="procedure-notary" class="form-control">
+                        <option value="true">Sí</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Crear Trámite</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
