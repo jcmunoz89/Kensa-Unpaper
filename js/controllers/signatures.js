@@ -63,7 +63,7 @@ const SignaturesController = {
                 if (!token) {
                     token = this.createToken(req, req.role);
                 }
-                const link = this.buildLink(token.tokenId);
+                const link = this.buildLink(token.tokenId || token.id);
                 const copied = await UI.copyToClipboard(link);
                 UI.showToast(copied ? 'Link copiado' : 'No se pudo copiar', copied ? 'success' : 'warning');
             });
@@ -113,20 +113,321 @@ const SignaturesController = {
         const btnPrev3 = document.getElementById('btn-prev-3');
         if (btnPrev3) btnPrev3.addEventListener('click', () => showStep(1));
 
-        const payerMode = document.getElementById('wiz-payer-mode');
-        const payerExtra = document.getElementById('wiz-payer-extra');
-        if (payerMode) {
-            payerMode.addEventListener('change', () => {
-                payerExtra.style.display = payerMode.value === 'separate' ? 'block' : 'none';
-            });
-        }
-
         const docSelect = document.getElementById('wiz-doc-version');
         this.loadDocumentVersions(docSelect);
 
+        // Participants Logic
+        const pListContainer = document.getElementById('participants-list-container');
+        const pForm = document.getElementById('participant-form');
+        const pList = document.getElementById('participants-list');
+        const paymentWarning = document.getElementById('payment-warning');
+        const paymentTotalSpan = document.getElementById('payment-total');
+
+        const btnShowAdd = document.getElementById('btn-show-add-participant');
+        const btnCancelP = document.getElementById('btn-cancel-participant');
+        const btnSaveP = document.getElementById('btn-save-participant');
+
+        const participants = [];
+        let docUploaded = false;
+
+        const updatePaymentWarning = () => {
+            const total = participants.reduce((sum, p) => sum + parseInt(p.paymentPercent, 10), 0);
+            if (paymentTotalSpan) paymentTotalSpan.innerText = total;
+            if (paymentWarning) paymentWarning.style.display = total < 100 ? 'block' : 'none';
+        };
+
+        const getRoleLabel = (role) => {
+            switch (role) {
+                case 'payer': return 'Pagador';
+                case 'signer_payer': return 'Firmante y Pagador';
+                case 'signer': return 'Firmante';
+                default: return 'Firmante';
+            }
+        };
+
+        const updatePaymentOptions = (role) => {
+            const lbl0 = document.getElementById('lbl-pay-0');
+            const lbl50 = document.getElementById('lbl-pay-50');
+            const lbl100 = document.getElementById('lbl-pay-100');
+            const radio0 = document.querySelector('input[name="p-pay"][value="0"]');
+            const radio100 = document.querySelector('input[name="p-pay"][value="100"]');
+
+            if (!lbl0 || !lbl50 || !lbl100) return;
+
+            if (role === 'signer') {
+                lbl0.style.display = 'flex';
+                lbl50.style.display = 'none';
+                lbl100.style.display = 'none';
+                if (radio0) radio0.checked = true;
+            } else {
+                lbl0.style.display = 'none';
+                lbl50.style.display = 'flex';
+                lbl100.style.display = 'flex';
+                if (radio0 && radio0.checked) {
+                    if (radio100) radio100.checked = true;
+                }
+            }
+
+            const orderGroup = document.getElementById('p-order-group');
+            if (orderGroup) {
+                orderGroup.style.display = (role === 'payer') ? 'none' : 'block';
+            }
+
+            const checked = document.querySelector('input[name="p-pay"]:checked');
+            if (checked) checked.dispatchEvent(new Event('change'));
+        };
+
+        const renderParticipants = () => {
+            if (!pList) return;
+            pList.innerHTML = '';
+            participants.forEach((p, index) => {
+                const item = document.createElement('div');
+                item.className = 'card';
+                item.style.padding = 'var(--space-md)';
+                item.style.border = '1px solid var(--border)';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: var(--space-md);">
+                        <div style="width: 8px; height: 8px; background: var(--primary); border-radius: 50%;"></div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.9rem;">${p.name}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                ${p.rut || '-'} • ${getRoleLabel(p.role)} • ${p.paymentPercent}%
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: var(--space-sm);">
+                        <button class="btn btn-sm btn-ghost btn-del-p" style="color: var(--danger);" data-index="${index}">🗑️</button>
+                    </div>
+                `;
+                pList.appendChild(item);
+            });
+
+            updatePaymentWarning();
+
+            document.querySelectorAll('.btn-del-p').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = e.target.dataset.index;
+                    participants.splice(idx, 1);
+                    renderParticipants();
+                });
+            });
+        };
+
+        if (btnShowAdd) {
+            btnShowAdd.addEventListener('click', () => {
+                const pName = document.getElementById('p-name');
+                if (pName) pName.value = '';
+                const pEmail = document.getElementById('p-email');
+                if (pEmail) pEmail.value = '';
+                const pRut = document.getElementById('p-rut');
+                if (pRut) pRut.value = '';
+                const pPhone = document.getElementById('p-phone');
+                if (pPhone) pPhone.value = '';
+                const pOrder = document.getElementById('p-order');
+                if (pOrder) pOrder.value = '1';
+
+                document.querySelectorAll('input[name="p-pay"]').forEach(r => r.checked = r.value === '0');
+                const pDocTypeGroup = document.getElementById('p-doc-type-group');
+                if (pDocTypeGroup) pDocTypeGroup.style.display = 'none';
+
+                if (pListContainer) pListContainer.style.display = 'none';
+                if (pForm) pForm.style.display = 'block';
+
+                document.querySelectorAll('.p-role-btn').forEach(b => {
+                    b.classList.remove('active', 'btn-primary');
+                    b.classList.add('btn-secondary');
+                    if (b.dataset.role === 'signer') {
+                        b.classList.add('active', 'btn-primary');
+                        b.classList.remove('btn-secondary');
+                    }
+                });
+                updatePaymentOptions('signer');
+            });
+        }
+
+        if (btnCancelP) {
+            btnCancelP.addEventListener('click', () => {
+                if (pForm) pForm.style.display = 'none';
+                if (pListContainer) pListContainer.style.display = 'block';
+            });
+        }
+
+        document.querySelectorAll('input[name="p-pay"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const val = e.target.value;
+                const pDocTypeGroup = document.getElementById('p-doc-type-group');
+                if (pDocTypeGroup) pDocTypeGroup.style.display = val === '0' ? 'none' : 'block';
+            });
+        });
+
+        if (btnSaveP) {
+            btnSaveP.addEventListener('click', () => {
+                const pName = document.getElementById('p-name');
+                const pEmail = document.getElementById('p-email');
+                const name = pName ? pName.value : '';
+                const email = pEmail ? pEmail.value : '';
+
+                if (!name || !email) {
+                    UI.showToast('Nombre y email son obligatorios', 'warning');
+                    return;
+                }
+
+                const payRadio = document.querySelector('input[name="p-pay"]:checked');
+                const paymentVal = payRadio ? payRadio.value : '0';
+
+                const roleBtn = document.querySelector('.p-role-btn.active');
+                const role = roleBtn ? roleBtn.dataset.role : 'signer';
+
+                const pRut = document.getElementById('p-rut');
+                const pPhone = document.getElementById('p-phone');
+                const pOrder = document.getElementById('p-order');
+                const docTypeRadio = document.querySelector('input[name="p-doc-type"]:checked');
+
+                participants.push({
+                    name,
+                    email,
+                    rut: pRut ? pRut.value : '',
+                    phone: pPhone ? pPhone.value : '',
+                    role: role,
+                    order: pOrder ? pOrder.value : '1',
+                    paymentPercent: parseInt(paymentVal, 10),
+                    docType: (paymentVal !== '0' && docTypeRadio) ? docTypeRadio.value : null
+                });
+
+                renderParticipants();
+                if (pForm) pForm.style.display = 'none';
+                if (pListContainer) pListContainer.style.display = 'block';
+            });
+        }
+
+        document.querySelectorAll('.p-role-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.p-role-btn').forEach(b => b.classList.remove('active', 'btn-primary'));
+                document.querySelectorAll('.p-role-btn').forEach(b => b.classList.add('btn-secondary'));
+
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('active', 'btn-primary');
+
+                updatePaymentOptions(btn.dataset.role);
+            });
+        });
+
+        const btnMerge = document.getElementById('btn-merge-docs');
+        const btnUpload = document.getElementById('btn-upload-doc');
+        const uploadActions = document.getElementById('upload-actions');
+        const docUploadedState = document.getElementById('doc-uploaded-state');
+        const docUploadedName = document.getElementById('doc-uploaded-name');
+        const btnRemoveDoc = document.getElementById('btn-remove-doc');
+
+        const setDocUploaded = (fileName) => {
+            docUploaded = true;
+            if (uploadActions) uploadActions.style.display = 'none';
+            if (docUploadedState) docUploadedState.style.display = 'block';
+            if (docUploadedName) docUploadedName.innerText = fileName;
+        };
+
+        if (btnMerge) {
+            btnMerge.addEventListener('click', () => {
+                setDocUploaded('archivos_unidos.pdf');
+                UI.showToast('Archivos unidos (mock)', 'success');
+            });
+        }
+
+        if (btnUpload) {
+            btnUpload.addEventListener('click', () => {
+                setDocUploaded('documento_subido.pdf');
+                UI.showToast('Documento subido (mock)', 'success');
+            });
+        }
+
+        if (btnRemoveDoc) {
+            btnRemoveDoc.addEventListener('click', () => {
+                docUploaded = false;
+                if (docUploadedState) docUploadedState.style.display = 'none';
+                if (uploadActions) uploadActions.style.display = 'flex';
+            });
+        }
+
         const btnFinish = document.getElementById('btn-finish');
         if (btnFinish) {
-            btnFinish.addEventListener('click', () => this.finishExpress(showStep));
+            btnFinish.addEventListener('click', () => {
+                const totalPayment = participants.reduce((sum, p) => sum + parseInt(p.paymentPercent, 10), 0);
+                if (participants.length === 0) {
+                    UI.showToast('Agrega al menos un participante', 'warning');
+                    return;
+                }
+                if (totalPayment !== 100) {
+                    UI.showToast('El pago debe sumar 100%', 'warning');
+                    return;
+                }
+                if (!docUploaded) {
+                    UI.showToast('Debes unir o subir documentos antes de continuar', 'warning');
+                    return;
+                }
+
+                const docVersionId = document.getElementById('wiz-doc-version').value;
+                const version = Storage.findById(this.scope, 'document_versions', docVersionId);
+                if (!version) {
+                    UI.showToast('Selecciona un documento publicado', 'warning');
+                    return;
+                }
+
+                const wizName = document.getElementById('wiz-name');
+                const name = wizName ? wizName.value : 'Trámite sin nombre';
+
+                const wizType = document.querySelector('input[name="wiz-type"]:checked');
+                const type = wizType ? wizType.value : 'cert';
+                const notaryRequired = type !== 'fes';
+
+                const signerParticipants = participants.filter(p => p.role !== 'payer');
+                const landlord = signerParticipants[0] || participants[0];
+                const tenant = signerParticipants[1] || signerParticipants[0] || participants[0];
+
+                const procedure = Storage.add(this.scope, 'procedures', {
+                    status: 'in_signature',
+                    type,
+                    identityPolicy: { mode: 'both' },
+                    paymentPolicy: { requireBeforeSignature: true },
+                    notaryRequired,
+                    notaryPacket: {
+                        landlord,
+                        tenant,
+                        property: { address: '-', rol: '-', price: '-' },
+                        deal: { id: 'express', name: name || `Trámite Express (${procedureTypeLabels[type]})`, value: 0 },
+                        documentVersionRef: {
+                            id: version.id,
+                            title: version.title,
+                            version: version.version,
+                            hash: version.hash
+                        }
+                    },
+                    assignedNotary: null,
+                    flags: { identityOk: false, paymentsOk: false, signaturesOk: false, notaryOk: !notaryRequired },
+                    createdBy: this.session.uid
+                });
+
+                Audit.append(this.tenantId, { action: 'procedure.created_express', procedureId: procedure.id });
+                Audit.append(this.tenantId, { action: 'procedure.status_changed', procedureId: procedure.id, meta: { status: procedure.status } });
+
+                const signatureRequests = participants.map(p => this.createSignatureRequest(procedure.id, p));
+
+                Storage.add(this.scope, 'payments', {
+                    procedureId: procedure.id,
+                    kind: 'procedure',
+                    status: 'pending',
+                    requiredPercent: 100,
+                    paidPercent: 0
+                });
+
+                const tokens = signatureRequests.map(req => this.createToken(req, req.role));
+
+                this.latestProcedureId = procedure.id;
+                this.renderSummary(procedure, signatureRequests, tokens, showStep);
+            });
         }
 
         const btnViewProc = document.getElementById('btn-view-procedure');
@@ -137,6 +438,8 @@ const SignaturesController = {
                 }
             });
         }
+
+        showStep(0);
     },
 
     loadDocumentVersions(selectEl) {
@@ -160,105 +463,22 @@ const SignaturesController = {
         });
     },
 
-    finishExpress(showStep) {
-        const type = document.querySelector('input[name="wiz-type"]:checked')?.value || 'cert';
-        const landlord = {
-            name: document.getElementById('wiz-landlord-name').value,
-            email: document.getElementById('wiz-landlord-email').value,
-            rut: document.getElementById('wiz-landlord-rut').value
-        };
-        const tenant = {
-            name: document.getElementById('wiz-tenant-name').value,
-            email: document.getElementById('wiz-tenant-email').value,
-            rut: document.getElementById('wiz-tenant-rut').value
-        };
-        const payerMode = document.getElementById('wiz-payer-mode').value;
-        const payer = payerMode === 'separate'
-            ? {
-                name: document.getElementById('wiz-payer-name').value,
-                email: document.getElementById('wiz-payer-email').value,
-                rut: document.getElementById('wiz-payer-rut').value
-            }
-            : null;
-
-        if (!landlord.name || !landlord.email || !tenant.name || !tenant.email) {
-            UI.showToast('Completa los datos de los firmantes', 'warning');
-            return;
-        }
-
-        if (payerMode === 'separate' && (!payer?.name || !payer?.email)) {
-            UI.showToast('Completa los datos del pagador', 'warning');
-            return;
-        }
-
-        const docVersionId = document.getElementById('wiz-doc-version').value;
-        const version = Storage.findById(this.scope, 'document_versions', docVersionId);
-        if (!version) {
-            UI.showToast('Selecciona un documento publicado', 'warning');
-            return;
-        }
-
-        const notaryRequired = type !== 'fes';
-
-        const procedure = Storage.add(this.scope, 'procedures', {
-            status: 'in_signature',
-            type,
-            identityPolicy: { mode: 'both' },
-            paymentPolicy: { requireBeforeSignature: true },
-            notaryRequired,
-            notaryPacket: {
-                landlord,
-                tenant,
-                property: { address: '-', rol: '-', price: '-' },
-                deal: { id: 'express', name: `Trámite Express (${procedureTypeLabels[type]})`, value: 0 },
-                documentVersionRef: {
-                    id: version.id,
-                    title: version.title,
-                    version: version.version,
-                    hash: version.hash
-                }
-            },
-            assignedNotary: null,
-            flags: { identityOk: false, paymentsOk: false, signaturesOk: false, notaryOk: !notaryRequired },
-            createdBy: this.session.uid
-        });
-
-        Audit.append(this.tenantId, { action: 'procedure.created_express', procedureId: procedure.id });
-        Audit.append(this.tenantId, { action: 'procedure.status_changed', procedureId: procedure.id, meta: { status: procedure.status } });
-
-        const signatureRequests = [];
-
-        signatureRequests.push(this.createSignatureRequest(procedure.id, landlord, payerMode === 'landlord' ? 'signer_payer' : 'signer'));
-        signatureRequests.push(this.createSignatureRequest(procedure.id, tenant, payerMode === 'tenant' ? 'signer_payer' : 'signer'));
-
-        if (payerMode === 'separate') {
-            signatureRequests.push(this.createSignatureRequest(procedure.id, payer, 'payer'));
-        }
-
-        const payerRequest = signatureRequests.find(r => r.role === 'payer' || r.role === 'signer_payer');
-
-        Storage.add(this.scope, 'payments', {
-            procedureId: procedure.id,
-            signatureRequestId: payerRequest ? payerRequest.id : null,
-            status: 'pending',
-            amount: 29990
-        });
-
-        const tokens = signatureRequests.map(req => this.createToken(req, req.role));
-
-        this.latestProcedureId = procedure.id;
-        this.renderSummary(procedure, signatureRequests, tokens, showStep);
-    },
-
-    createSignatureRequest(procedureId, participant, role) {
+    createSignatureRequest(procedureId, participant) {
         const request = Storage.add(this.scope, 'signature_requests', {
             procedureId,
             tenantId: this.tenantId,
-            role,
+            role: participant.role,
             status: 'pending',
-            participant,
+            progress: 'opened',
+            paymentPercent: participant.paymentPercent,
+            participant: {
+                name: participant.name,
+                email: participant.email,
+                rut: participant.rut,
+                phone: participant.phone
+            },
             identity: { claveUnica: null, biometrics: null },
-            payment: { status: 'pending' }
+            payment: { status: participant.paymentPercent > 0 ? 'pending' : 'not_required' }
         });
         return request;
     },
@@ -290,7 +510,8 @@ const SignaturesController = {
 
         const rows = signatureRequests.map(req => {
             const token = tokens.find(t => t.signatureRequestId === req.id);
-            const link = this.buildLink(token.tokenId);
+            const tokenId = token ? (token.tokenId || token.id) : '';
+            const link = this.buildLink(tokenId);
             return `
                 <tr>
                     <td>${req.participant.name}</td>

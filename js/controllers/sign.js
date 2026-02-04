@@ -97,11 +97,16 @@ const SignController = {
     updateStepState() {
         const identity = this.signatureRequest.identity || { claveUnica: null, biometrics: null };
         const payment = this.signatureRequest.payment || { status: 'pending' };
-        const procedurePaymentPaid = (this.procedure.flags?.paymentsOk === true) || Storage.list(this.scope, 'payments').some(p => p.procedureId === this.procedure.id && p.status === 'paid');
+        const payments = Storage.list(this.scope, 'payments').filter(p => p.procedureId === this.procedure.id);
+        const summaryPayment = payments.find(p => p.kind === 'procedure');
+        const requiredPercent = summaryPayment?.requiredPercent ?? 100;
+        const paidPercent = summaryPayment?.paidPercent ?? this.calculatePaidPercent();
+        const procedurePaymentPaid = paidPercent >= requiredPercent || summaryPayment?.status === 'paid';
 
         const step1Done = !!identity.claveUnica;
         const step2Done = !!identity.biometrics;
         const step3Done = this.isPayer ? payment.status === 'paid' : procedurePaymentPaid;
+        const canSign = step2Done && procedurePaymentPaid && (!this.isPayer || payment.status === 'paid');
 
         this.setStepStatus('step1-status', step1Done);
         this.setStepStatus('step2-status', step2Done);
@@ -111,13 +116,53 @@ const SignController = {
         document.getElementById('btn-step1').disabled = step1Done;
         document.getElementById('btn-step2').disabled = !step1Done || step2Done;
         document.getElementById('btn-step3').disabled = !step2Done || step3Done || !this.isPayer;
-        document.getElementById('btn-sign-confirm').disabled = !step3Done;
+        document.getElementById('btn-sign-confirm').disabled = !canSign;
+
+        if (step2Done && step3Done && this.signatureRequest.progress !== 'payment_ok' && this.signatureRequest.status !== 'signed') {
+            const updatedPayment = payment;
+            if (!this.isPayer && updatedPayment.status !== 'paid') {
+                updatedPayment.status = 'paid';
+                updatedPayment.paidAt = summaryPayment?.paidAt || new Date().toISOString();
+                this.signatureRequest.payment = updatedPayment;
+            }
+            this.signatureRequest.progress = 'payment_ok';
+            Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
+        }
+
+        if (procedurePaymentPaid && !this.procedure.flags?.paymentsOk) {
+            this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, {
+                flags: { ...this.procedure.flags, paymentsOk: true }
+            });
+        }
     },
 
     setStepStatus(id, done) {
         const el = document.getElementById(id);
         el.className = `badge badge-${done ? 'success' : 'warning'}`;
         el.innerText = done ? 'OK' : 'Pendiente';
+    },
+
+    calculatePaidPercent() {
+        const requests = Storage.list(this.scope, 'signature_requests').filter(r => r.procedureId === this.procedure.id);
+        return requests.reduce((sum, r) => {
+            const percent = r.paymentPercent || 0;
+            return sum + (r.payment?.status === 'paid' ? percent : 0);
+        }, 0);
+    },
+
+    getOrCreateSummaryPayment() {
+        const payments = Storage.list(this.scope, 'payments').filter(p => p.procedureId === this.procedure.id);
+        let summary = payments.find(p => p.kind === 'procedure');
+        if (!summary) {
+            summary = Storage.add(this.scope, 'payments', {
+                procedureId: this.procedure.id,
+                kind: 'procedure',
+                status: 'pending',
+                requiredPercent: 100,
+                paidPercent: this.calculatePaidPercent()
+            });
+        }
+        return summary;
     },
 
     completeClaveUnica() {
@@ -131,6 +176,7 @@ const SignController = {
             }
         };
         this.signatureRequest.identity = identity;
+        this.signatureRequest.progress = 'identity_verified_partial';
         Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
         Audit.append(this.token.tenantId, { action: 'signing.claveunica_ok', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
         UI.showToast('Clave Única validada (mock)', 'success');
@@ -146,6 +192,7 @@ const SignController = {
             resultMock: 'pass'
         };
         this.signatureRequest.identity = identity;
+        this.signatureRequest.progress = 'identity_verified_full';
         Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
         const allRequests = Storage.list(this.scope, 'signature_requests').filter(r => r.procedureId === this.procedure.id);
         const allVerified = allRequests.every(r => r.identity?.biometrics);
@@ -176,23 +223,24 @@ const SignController = {
         payment.status = 'paid';
         payment.paidAt = new Date().toISOString();
         this.signatureRequest.payment = payment;
+        this.signatureRequest.progress = 'payment_ok';
         Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
 
-        const existingPayment = Storage.list(this.scope, 'payments').find(p => p.procedureId === this.procedure.id && (p.signatureRequestId === this.signatureRequest.id || !p.signatureRequestId));
-        if (!existingPayment) {
-            Storage.add(this.scope, 'payments', {
-                procedureId: this.procedure.id,
-                signatureRequestId: this.signatureRequest.id,
-                amount: 29990,
-                status: 'paid'
-            });
-        } else {
-            Storage.update(this.scope, 'payments', existingPayment.id, { status: 'paid', updatedAt: new Date().toISOString() });
-        }
-
-        this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, {
-            flags: { ...this.procedure.flags, paymentsOk: true }
+        const paymentPercent = this.signatureRequest.paymentPercent || 0;
+        const summaryPayment = this.getOrCreateSummaryPayment();
+        const updatedPercent = Math.min((summaryPayment.paidPercent || 0) + paymentPercent, summaryPayment.requiredPercent || 100);
+        const summaryStatus = updatedPercent >= (summaryPayment.requiredPercent || 100) ? 'paid' : 'pending';
+        Storage.update(this.scope, 'payments', summaryPayment.id, {
+            paidPercent: updatedPercent,
+            status: summaryStatus,
+            paidAt: summaryStatus === 'paid' ? new Date().toISOString() : summaryPayment.paidAt
         });
+
+        if (summaryStatus === 'paid') {
+            this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, {
+                flags: { ...this.procedure.flags, paymentsOk: true }
+            });
+        }
 
         Audit.append(this.token.tenantId, { action: 'payment.paid_mock', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
         UI.showToast('Pago registrado (mock)', 'success');
@@ -272,6 +320,7 @@ const SignController = {
             }
 
             this.signatureRequest.status = 'signed';
+            this.signatureRequest.progress = 'signed';
             this.signatureRequest.evidence = {
                 signedAt: new Date().toISOString(),
                 ip: '127.0.0.1',
