@@ -14,7 +14,15 @@ const Store = {
         // Try to recover session
         const session = localStorage.getItem('KensaUnpaper:session');
         if (session) {
-            const data = JSON.parse(session);
+            let data;
+            try {
+                data = JSON.parse(session);
+            } catch (err) {
+                console.warn('Invalid session data, clearing.', err);
+                localStorage.removeItem('KensaUnpaper:session');
+                data = null;
+            }
+            if (!data) return;
             this.state.tenant = data.tenantId || data.tenant || null;
             if (data.user) {
                 this.state.user = data.user;
@@ -61,7 +69,13 @@ const Store = {
     getAll(entity) {
         const key = this._getKey(entity);
         const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : [];
+        if (!data) return [];
+        try {
+            return JSON.parse(data);
+        } catch (err) {
+            console.warn('Invalid JSON for', key, err);
+            return [];
+        }
     },
 
     getById(entity, id) {
