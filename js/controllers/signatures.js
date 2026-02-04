@@ -1,22 +1,27 @@
-import Store from '../store.js';
 import Storage from '../storage.js';
 import Auth from '../auth.js';
 import Audit from '../audit.js';
 import UI from '../ui.js';
 
+const procedureTypeLabels = {
+    cert: 'Certificación Notarial',
+    proto: 'Protocolización Notarial',
+    fes: 'Firma Electrónica Simple'
+};
+
 const SignaturesController = {
     init() {
+        this.session = Auth.getSession();
+        this.tenantId = this.session?.tenantId || null;
+        if (!this.tenantId) return;
+        this.scope = Storage.tenantScope(this.tenantId);
+
         this.renderList();
         this.setupWizard();
     },
 
     renderList() {
-        const session = Auth.getSession();
-        const tenantId = session ? session.tenantId : null;
-        if (!tenantId) return;
-
-        const scope = Storage.tenantScope(tenantId);
-        const requests = Storage.list(scope, 'signature_requests');
+        const requests = Storage.list(this.scope, 'signature_requests');
         const tbody = document.getElementById('signatures-list');
         const empty = document.getElementById('sig-empty');
 
@@ -40,146 +45,29 @@ const SignaturesController = {
                 <td><strong>${req.participant?.name || 'Firmante'}</strong></td>
                 <td><span class="badge badge-neutral">${req.role || 'signer'}</span></td>
                 <td>${req.participant?.email || '-'}</td>
-                <td><span class="badge badge-${isSigned ? 'success' : 'warning'}\">${isSigned ? 'Firmado' : 'Pendiente'}</span></td>
+                <td><span class="badge badge-${isSigned ? 'success' : 'warning'}">${isSigned ? 'Firmado' : 'Pendiente'}</span></td>
                 <td>
-                    ${!isSigned ? `<button class="btn btn-sm btn-secondary btn-sign" data-id="${req.id}">Generar Link</button>` : '✅'}
+                    ${!isSigned ? `<button class="btn btn-sm btn-secondary btn-sign" data-id="${req.id}">Copiar Link</button>` : '✅'}
                 </td>
             `;
             tbody.appendChild(tr);
         });
 
         document.querySelectorAll('.btn-sign').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
                 const req = requests.find(r => r.id === id);
                 if (!req) return;
-                const token = this.createSigningToken(req, tenantId);
-                const link = `${window.location.origin}${window.location.pathname}#sign?token=${token}`;
-                window.prompt('Link de firma externa', link);
+                const tokens = Storage.list('global', 'signingTokens');
+                let token = tokens.find(t => t.signatureRequestId === req.id && t.status === 'active');
+                if (!token) {
+                    token = this.createToken(req, req.role);
+                }
+                const link = this.buildLink(token.tokenId);
+                const copied = await UI.copyToClipboard(link);
+                UI.showToast(copied ? 'Link copiado' : 'No se pudo copiar', copied ? 'success' : 'warning');
             });
         });
-    },
-
-    createSigningToken(signatureRequest, tenantId) {
-        const token = crypto.randomUUID();
-        Storage.add('global', 'signingTokens', {
-            id: token,
-            token,
-            tenantId,
-            procedureId: signatureRequest.procedureId,
-            signatureRequestId: signatureRequest.id,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-            status: 'active',
-            attempts: 0
-        });
-        Audit.append(tenantId, { action: 'SIGN_TOKEN_CREATED', procedureId: signatureRequest.procedureId, meta: { signatureRequestId: signatureRequest.id } });
-        return token;
-    },
-
-    openSignaturePad(docId) {
-        const modal = document.getElementById('modal-signature-pad');
-        const canvas = document.getElementById('signature-canvas');
-        const ctx = canvas ? canvas.getContext('2d') : null;
-        const btnClear = document.getElementById('btn-clear-sig');
-        const btnCancel = document.getElementById('btn-cancel-sig');
-        const btnClose = document.getElementById('btn-close-sig-pad');
-        const btnConfirm = document.getElementById('btn-confirm-sig');
-        const placeholder = document.getElementById('sig-placeholder');
-
-        if (!modal || !canvas) return;
-
-        // Reset & Show
-        modal.style.display = 'flex';
-
-        // Adjust Canvas Size to match display size
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous
-        if (placeholder) placeholder.style.display = 'block';
-
-        let isDrawing = false;
-        let hasSignature = false;
-
-        const startDrawing = (e) => {
-            isDrawing = true;
-            hasSignature = true;
-            if (placeholder) placeholder.style.display = 'none';
-            draw(e);
-        };
-
-        const stopDrawing = () => {
-            isDrawing = false;
-            ctx.beginPath();
-        };
-
-        const draw = (e) => {
-            if (!isDrawing) return;
-
-            // Get correct coordinates
-            const rect = canvas.getBoundingClientRect();
-            let x, y;
-
-            if (e.type.includes('touch')) {
-                x = e.touches[0].clientX - rect.left;
-                y = e.touches[0].clientY - rect.top;
-            } else {
-                x = e.clientX - rect.left;
-                y = e.clientY - rect.top;
-            }
-
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-        };
-
-        // Event Listeners - Mouse
-        canvas.onmousedown = startDrawing;
-        canvas.onmouseup = stopDrawing;
-        canvas.onmousemove = draw;
-        canvas.onmouseleave = stopDrawing;
-
-        // Event Listeners - Touch
-        canvas.ontouchstart = (e) => { e.preventDefault(); startDrawing(e); };
-        canvas.ontouchend = (e) => { e.preventDefault(); stopDrawing(); };
-        canvas.ontouchmove = (e) => { e.preventDefault(); draw(e); };
-
-        // Actions
-        const closePad = () => {
-            modal.style.display = 'none';
-        };
-
-        const clearPad = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            hasSignature = false;
-            if (placeholder) placeholder.style.display = 'block';
-        };
-
-        const confirmPad = () => {
-            if (!hasSignature) {
-                UI.showToast('Por favor, dibuja tu firma.', 'warning');
-                return;
-            }
-
-            // Save logic
-            Store.update('documents', docId, { signed: true, signedAt: new Date().toISOString() });
-            UI.showToast('Documento firmado exitosamente', 'success');
-            closePad();
-            this.renderList();
-        };
-
-        // Attach one-time listeners (clearing old ones first if needed, 
-        // but simpler here to just overwrite onclick which is safer for this scope)
-
-        btnClear.onclick = clearPad;
-        btnCancel.onclick = closePad;
-        btnClose.onclick = closePad;
-        btnConfirm.onclick = confirmPad;
     },
 
     setupWizard() {
@@ -188,11 +76,20 @@ const SignaturesController = {
         const btnNew = document.getElementById('btn-new-request');
         const btnBack = document.getElementById('btn-back-list');
 
+        const steps = ['step-1', 'step-2', 'step-3', 'step-4'];
+        const showStep = (index) => {
+            steps.forEach((id, i) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = i === index ? 'block' : 'none';
+            });
+        };
+
         if (btnNew) {
             btnNew.addEventListener('click', () => {
                 if (viewList) viewList.style.display = 'none';
                 if (viewWizard) viewWizard.style.display = 'block';
                 btnNew.style.display = 'none';
+                showStep(0);
             });
         }
 
@@ -204,18 +101,6 @@ const SignaturesController = {
             });
         }
 
-        // Steps Navigation
-        const steps = ['step-1', 'step-2', 'step-3'];
-        let currentStep = 0;
-
-        const showStep = (index) => {
-            steps.forEach((id, i) => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = i === index ? 'block' : 'none';
-            });
-            currentStep = index;
-        };
-
         const btnNext1 = document.getElementById('btn-next-1');
         if (btnNext1) btnNext1.addEventListener('click', () => showStep(1));
 
@@ -223,328 +108,236 @@ const SignaturesController = {
         if (btnPrev2) btnPrev2.addEventListener('click', () => showStep(0));
 
         const btnNext2 = document.getElementById('btn-next-2');
-        if (btnNext2) {
-            btnNext2.addEventListener('click', () => {
-                // Validate Payment Total
-                const totalPayment = participants.reduce((sum, p) => sum + parseInt(p.payment), 0);
-                if (totalPayment < 100) {
-                    UI.showToast(`Solo se ha definido un ${totalPayment}% del pago.`, 'warning');
-                }
-                showStep(2);
-            });
-        }
+        if (btnNext2) btnNext2.addEventListener('click', () => showStep(2));
 
         const btnPrev3 = document.getElementById('btn-prev-3');
         if (btnPrev3) btnPrev3.addEventListener('click', () => showStep(1));
 
-        // Participants Logic
-        const pListContainer = document.getElementById('participants-list-container');
-        const pForm = document.getElementById('participant-form');
-        const pList = document.getElementById('participants-list');
-        const paymentWarning = document.getElementById('payment-warning');
-        const paymentTotalSpan = document.getElementById('payment-total');
-
-        const btnShowAdd = document.getElementById('btn-show-add-participant');
-        const btnCancelP = document.getElementById('btn-cancel-participant');
-        const btnSaveP = document.getElementById('btn-save-participant');
-
-        let participants = [];
-
-        const updatePaymentWarning = () => {
-            const total = participants.reduce((sum, p) => sum + parseInt(p.payment), 0);
-            if (paymentTotalSpan) paymentTotalSpan.innerText = total;
-            if (paymentWarning) paymentWarning.style.display = total < 100 ? 'block' : 'none';
-        };
-
-        const getRoleLabel = (role) => {
-            switch (role) {
-                case 'payer': return 'Pagador';
-                case 'signer_payer': return 'Firmante y Pagador';
-                case 'signer': return 'Firmante';
-                default: return 'Firmante';
-            }
-        };
-
-        const updatePaymentOptions = (role) => {
-            const lbl0 = document.getElementById('lbl-pay-0');
-            const lbl50 = document.getElementById('lbl-pay-50');
-            const lbl100 = document.getElementById('lbl-pay-100');
-            const radio0 = document.querySelector('input[name="p-pay"][value="0"]');
-            const radio100 = document.querySelector('input[name="p-pay"][value="100"]');
-
-            if (!lbl0 || !lbl50 || !lbl100) return;
-
-            if (role === 'signer') {
-                // Signer: Only "No" allowed
-                lbl0.style.display = 'flex';
-                lbl50.style.display = 'none';
-                lbl100.style.display = 'none';
-                if (radio0) radio0.checked = true;
-            } else {
-                // Payer / Signer & Payer: Only 50% / 100% allowed
-                lbl0.style.display = 'none';
-                lbl50.style.display = 'flex';
-                lbl100.style.display = 'flex';
-
-                // If "No" was checked, switch to 100% default
-                if (radio0 && radio0.checked) {
-                    if (radio100) radio100.checked = true;
-                }
-            }
-
-            // Toggle Signature Order visibility
-            const orderGroup = document.getElementById('p-order-group');
-            if (orderGroup) {
-                orderGroup.style.display = (role === 'payer') ? 'none' : 'block';
-            }
-
-            // Trigger change event to update doc type visibility
-            const checked = document.querySelector('input[name="p-pay"]:checked');
-            if (checked) checked.dispatchEvent(new Event('change'));
-        };
-
-        const renderParticipants = () => {
-            if (!pList) return;
-            pList.innerHTML = '';
-            participants.forEach((p, index) => {
-                const item = document.createElement('div');
-                item.className = 'card';
-                item.style.padding = 'var(--space-md)';
-                item.style.border = '1px solid var(--border)';
-                item.style.display = 'flex';
-                item.style.justifyContent = 'space-between';
-                item.style.alignItems = 'center';
-
-                item.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: var(--space-md);">
-                        <div style="width: 8px; height: 8px; background: var(--primary); border-radius: 50%;"></div>
-                        <div>
-                            <div style="font-weight: 600; font-size: 0.9rem;">${p.name}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                ${p.rut} • ${getRoleLabel(p.role)}
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: var(--space-sm);">
-                        <button class="btn btn-sm btn-ghost btn-del-p" style="color: var(--danger);" data-index="${index}">🗑️</button>
-                    </div>
-                `;
-                pList.appendChild(item);
-            });
-
-            updatePaymentWarning();
-
-            // Re-attach listeners
-            document.querySelectorAll('.btn-del-p').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idx = e.target.dataset.index;
-                    participants.splice(idx, 1);
-                    renderParticipants();
-                });
-            });
-        };
-
-        if (btnShowAdd) {
-            btnShowAdd.addEventListener('click', () => {
-                // Clear form
-                const pName = document.getElementById('p-name');
-                if (pName) pName.value = '';
-                const pEmail = document.getElementById('p-email');
-                if (pEmail) pEmail.value = '';
-                const pRut = document.getElementById('p-rut');
-                if (pRut) pRut.value = '';
-                const pPhone = document.getElementById('p-phone');
-                if (pPhone) pPhone.value = '';
-                const pOrder = document.getElementById('p-order');
-                if (pOrder) pOrder.value = '1';
-
-                // Reset radios
-                document.querySelectorAll('input[name="p-pay"]').forEach(r => r.checked = r.value === '0');
-                const pDocTypeGroup = document.getElementById('p-doc-type-group');
-                if (pDocTypeGroup) pDocTypeGroup.style.display = 'none';
-
-                if (pListContainer) pListContainer.style.display = 'none';
-                if (pForm) pForm.style.display = 'block';
-
-                // Reset to default role (Signer) and update options
-                document.querySelectorAll('.p-role-btn').forEach(b => {
-                    b.classList.remove('active', 'btn-primary');
-                    b.classList.add('btn-secondary');
-                    if (b.dataset.role === 'signer') {
-                        b.classList.add('active', 'btn-primary');
-                        b.classList.remove('btn-secondary');
-                    }
-                });
-                updatePaymentOptions('signer');
+        const payerMode = document.getElementById('wiz-payer-mode');
+        const payerExtra = document.getElementById('wiz-payer-extra');
+        if (payerMode) {
+            payerMode.addEventListener('change', () => {
+                payerExtra.style.display = payerMode.value === 'separate' ? 'block' : 'none';
             });
         }
 
-        if (btnCancelP) {
-            btnCancelP.addEventListener('click', () => {
-                if (pForm) pForm.style.display = 'none';
-                if (pListContainer) pListContainer.style.display = 'block';
-            });
-        }
+        const docSelect = document.getElementById('wiz-doc-version');
+        this.loadDocumentVersions(docSelect);
 
-        // Toggle Boleta/Factura visibility based on payment
-        document.querySelectorAll('input[name="p-pay"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const val = e.target.value;
-                const pDocTypeGroup = document.getElementById('p-doc-type-group');
-                if (pDocTypeGroup) pDocTypeGroup.style.display = val === '0' ? 'none' : 'block';
-            });
-        });
-
-        if (btnSaveP) {
-            btnSaveP.addEventListener('click', () => {
-                const pName = document.getElementById('p-name');
-                const pRut = document.getElementById('p-rut');
-                const name = pName ? pName.value : '';
-                const rut = pRut ? pRut.value : '';
-
-                if (!name || !rut) {
-                    UI.showToast('Nombre y RUT son obligatorios', 'warning');
-                    return;
-                }
-
-                const payRadio = document.querySelector('input[name="p-pay"]:checked');
-                const paymentVal = payRadio ? payRadio.value : '0';
-
-                const roleBtn = document.querySelector('.p-role-btn.active');
-                const role = roleBtn ? roleBtn.dataset.role : 'signer';
-
-                const pEmail = document.getElementById('p-email');
-                const pPhone = document.getElementById('p-phone');
-                const pOrder = document.getElementById('p-order');
-                const docTypeRadio = document.querySelector('input[name="p-doc-type"]:checked');
-
-                participants.push({
-                    name,
-                    email: pEmail ? pEmail.value : '',
-                    rut,
-                    phone: pPhone ? pPhone.value : '',
-                    role: role,
-                    order: pOrder ? pOrder.value : '1',
-                    payment: paymentVal,
-                    docType: (paymentVal !== '0' && docTypeRadio) ? docTypeRadio.value : null
-                });
-
-                renderParticipants();
-                if (pForm) pForm.style.display = 'none';
-                if (pListContainer) pListContainer.style.display = 'block';
-            });
-        }
-
-        // Role Toggle
-        document.querySelectorAll('.p-role-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.p-role-btn').forEach(b => b.classList.remove('active', 'btn-primary'));
-                document.querySelectorAll('.p-role-btn').forEach(b => b.classList.add('btn-secondary'));
-
-                btn.classList.remove('btn-secondary');
-                btn.classList.add('active', 'btn-primary');
-
-                updatePaymentOptions(btn.dataset.role);
-            });
-        });
-
-        // Document Upload & Assign Logic
-        const btnUpload = document.getElementById('btn-upload-doc');
-        const uploadActions = document.getElementById('upload-actions');
-        const docUploadedState = document.getElementById('doc-uploaded-state');
-        const btnRemoveDoc = document.getElementById('btn-remove-doc');
-        const modalAssign = document.getElementById('modal-assign-sig');
-        const btnCloseAssign = document.getElementById('btn-close-assign');
-        const btnConfirmAssign = document.getElementById('btn-confirm-assign');
-        const assignList = document.getElementById('assign-participants-list');
-
-        if (btnUpload) {
-            btnUpload.addEventListener('click', () => {
-                // Simulate Upload -> Show Modal
-                if (assignList) {
-                    assignList.innerHTML = '';
-                    participants.forEach((p, i) => {
-                        assignList.innerHTML += `
-                            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                                <input type="radio" name="assign-p" value="${i}" ${i === 0 ? 'checked' : ''}>
-                                <span style="font-weight: 500;">${p.name}</span>
-                            </label>
-                        `;
-                    });
-                }
-                if (modalAssign) modalAssign.style.display = 'flex';
-            });
-        }
-
-        if (btnCloseAssign) {
-            btnCloseAssign.addEventListener('click', () => {
-                if (modalAssign) modalAssign.style.display = 'none';
-            });
-        }
-
-        if (btnConfirmAssign) {
-            btnConfirmAssign.addEventListener('click', () => {
-                if (modalAssign) modalAssign.style.display = 'none';
-                if (uploadActions) uploadActions.style.display = 'none';
-                if (docUploadedState) docUploadedState.style.display = 'block';
-                UI.showToast('Documento subido y asignado', 'success');
-            });
-        }
-
-        if (btnRemoveDoc) {
-            btnRemoveDoc.addEventListener('click', () => {
-                if (docUploadedState) docUploadedState.style.display = 'none';
-                if (uploadActions) uploadActions.style.display = 'flex';
-            });
-        }
-
-        // Finish
         const btnFinish = document.getElementById('btn-finish');
         if (btnFinish) {
-            btnFinish.addEventListener('click', () => {
-                const wizName = document.getElementById('wiz-name');
-                const name = wizName ? wizName.value : 'Trámite sin nombre';
-
-                const wizType = document.querySelector('input[name="wiz-type"]:checked');
-                const isNotarized = wizType ? wizType.value === 'proto' : false;
-
-                // Create a mock document
-                Store.add('documents', {
-                    title: name,
-                    status: 'published',
-                    version: 1,
-                    signed: false,
-                    notarized: isNotarized,
-                    participants: participants
-                });
-
-                UI.showToast('Solicitud creada exitosamente', 'success');
-
-                // Reset & Return
-                if (viewList) viewList.style.display = 'block';
-                if (viewWizard) viewWizard.style.display = 'none';
-                if (btnNew) btnNew.style.display = 'inline-flex';
-                showStep(0);
-                participants = [];
-                renderParticipants();
-
-                // Reset Doc State
-                if (docUploadedState) docUploadedState.style.display = 'none';
-                if (uploadActions) uploadActions.style.display = 'flex';
-
-                this.renderList();
-            });
+            btnFinish.addEventListener('click', () => this.finishExpress(showStep));
         }
 
-        // Clean
-        const btnClean = document.getElementById('btn-clean');
-        if (btnClean) {
-            btnClean.addEventListener('click', () => {
-                const wizName = document.getElementById('wiz-name');
-                if (wizName) wizName.value = '';
-                UI.showToast('Formulario limpiado', 'info');
+        const btnViewProc = document.getElementById('btn-view-procedure');
+        if (btnViewProc) {
+            btnViewProc.addEventListener('click', () => {
+                if (this.latestProcedureId) {
+                    window.location.hash = `procedure-detail?id=${this.latestProcedureId}`;
+                }
             });
         }
+    },
+
+    loadDocumentVersions(selectEl) {
+        if (!selectEl) return;
+        const versions = Storage.list(this.scope, 'document_versions').filter(v => !v.voidedAt);
+        selectEl.innerHTML = '';
+        if (versions.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.innerText = 'No hay documentos publicados';
+            selectEl.appendChild(opt);
+            selectEl.disabled = true;
+            return;
+        }
+        selectEl.disabled = false;
+        versions.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.innerText = `${v.title || 'Documento'} v${v.version}`;
+            selectEl.appendChild(opt);
+        });
+    },
+
+    finishExpress(showStep) {
+        const type = document.querySelector('input[name="wiz-type"]:checked')?.value || 'cert';
+        const landlord = {
+            name: document.getElementById('wiz-landlord-name').value,
+            email: document.getElementById('wiz-landlord-email').value,
+            rut: document.getElementById('wiz-landlord-rut').value
+        };
+        const tenant = {
+            name: document.getElementById('wiz-tenant-name').value,
+            email: document.getElementById('wiz-tenant-email').value,
+            rut: document.getElementById('wiz-tenant-rut').value
+        };
+        const payerMode = document.getElementById('wiz-payer-mode').value;
+        const payer = payerMode === 'separate'
+            ? {
+                name: document.getElementById('wiz-payer-name').value,
+                email: document.getElementById('wiz-payer-email').value,
+                rut: document.getElementById('wiz-payer-rut').value
+            }
+            : null;
+
+        if (!landlord.name || !landlord.email || !tenant.name || !tenant.email) {
+            UI.showToast('Completa los datos de los firmantes', 'warning');
+            return;
+        }
+
+        if (payerMode === 'separate' && (!payer?.name || !payer?.email)) {
+            UI.showToast('Completa los datos del pagador', 'warning');
+            return;
+        }
+
+        const docVersionId = document.getElementById('wiz-doc-version').value;
+        const version = Storage.findById(this.scope, 'document_versions', docVersionId);
+        if (!version) {
+            UI.showToast('Selecciona un documento publicado', 'warning');
+            return;
+        }
+
+        const notaryRequired = type !== 'fes';
+
+        const procedure = Storage.add(this.scope, 'procedures', {
+            status: 'in_signature',
+            type,
+            identityPolicy: { mode: 'both' },
+            paymentPolicy: { requireBeforeSignature: true },
+            notaryRequired,
+            notaryPacket: {
+                landlord,
+                tenant,
+                property: { address: '-', rol: '-', price: '-' },
+                deal: { id: 'express', name: `Trámite Express (${procedureTypeLabels[type]})`, value: 0 },
+                documentVersionRef: {
+                    id: version.id,
+                    title: version.title,
+                    version: version.version,
+                    hash: version.hash
+                }
+            },
+            assignedNotary: null,
+            flags: { identityOk: false, paymentsOk: false, signaturesOk: false, notaryOk: !notaryRequired },
+            createdBy: this.session.uid
+        });
+
+        Audit.append(this.tenantId, { action: 'procedure.created_express', procedureId: procedure.id });
+        Audit.append(this.tenantId, { action: 'procedure.status_changed', procedureId: procedure.id, meta: { status: procedure.status } });
+
+        const signatureRequests = [];
+
+        signatureRequests.push(this.createSignatureRequest(procedure.id, landlord, payerMode === 'landlord' ? 'signer_payer' : 'signer'));
+        signatureRequests.push(this.createSignatureRequest(procedure.id, tenant, payerMode === 'tenant' ? 'signer_payer' : 'signer'));
+
+        if (payerMode === 'separate') {
+            signatureRequests.push(this.createSignatureRequest(procedure.id, payer, 'payer'));
+        }
+
+        const payerRequest = signatureRequests.find(r => r.role === 'payer' || r.role === 'signer_payer');
+
+        Storage.add(this.scope, 'payments', {
+            procedureId: procedure.id,
+            signatureRequestId: payerRequest ? payerRequest.id : null,
+            status: 'pending',
+            amount: 29990
+        });
+
+        const tokens = signatureRequests.map(req => this.createToken(req, req.role));
+
+        this.latestProcedureId = procedure.id;
+        this.renderSummary(procedure, signatureRequests, tokens, showStep);
+    },
+
+    createSignatureRequest(procedureId, participant, role) {
+        const request = Storage.add(this.scope, 'signature_requests', {
+            procedureId,
+            tenantId: this.tenantId,
+            role,
+            status: 'pending',
+            participant,
+            identity: { claveUnica: null, biometrics: null },
+            payment: { status: 'pending' }
+        });
+        return request;
+    },
+
+    createToken(signatureRequest, roleInProcedure) {
+        const tokenId = crypto.randomUUID();
+        const token = Storage.add('global', 'signingTokens', {
+            id: tokenId,
+            tokenId,
+            tenantId: this.tenantId,
+            procedureId: signatureRequest.procedureId,
+            signatureRequestId: signatureRequest.id,
+            roleInProcedure,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            attempts: 0,
+            status: 'active'
+        });
+        Audit.append(this.tenantId, { action: 'token.created', procedureId: signatureRequest.procedureId, meta: { signatureRequestId: signatureRequest.id } });
+        return token;
+    },
+
+    buildLink(tokenId) {
+        return `${window.location.origin}${window.location.pathname}#/sign?token=${tokenId}`;
+    },
+
+    async renderSummary(procedure, signatureRequests, tokens, showStep) {
+        const summary = document.getElementById('wizard-summary');
+        if (!summary) return;
+
+        const rows = signatureRequests.map(req => {
+            const token = tokens.find(t => t.signatureRequestId === req.id);
+            const link = this.buildLink(token.tokenId);
+            return `
+                <tr>
+                    <td>${req.participant.name}</td>
+                    <td>${req.role}</td>
+                    <td>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="text" class="form-control" value="${link}" readonly style="font-size:0.75rem;">
+                            <button class="btn btn-sm btn-secondary" data-copy="${link}">Copiar</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        summary.innerHTML = `
+            <div style="margin-bottom: var(--space-md);">
+                <strong>Estado del trámite:</strong> <span class="badge badge-info">${procedure.status}</span>
+            </div>
+            <div style="margin-bottom: var(--space-md);">
+                <strong>Tipo:</strong> ${procedureTypeLabels[procedure.type]}
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Participante</th>
+                            <th>Rol</th>
+                            <th>Link</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        summary.querySelectorAll('[data-copy]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const link = btn.dataset.copy;
+                const copied = await UI.copyToClipboard(link);
+                UI.showToast(copied ? 'Link copiado' : 'No se pudo copiar', copied ? 'success' : 'warning');
+            });
+        });
+
+        showStep(3);
+        this.renderList();
     }
 };
 

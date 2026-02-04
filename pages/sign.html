@@ -18,48 +18,69 @@
                 </div>
             </div>
 
-            <div id="sign-identity" class="card" style="margin-bottom: var(--space-md);">
-                <div class="card-header">
-                    <h3 class="card-title">Verificación de Identidad</h3>
-                </div>
-                <div class="card-body" style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
-                    <button id="btn-identity-clave" class="btn btn-secondary">Validar con Clave Única</button>
-                    <button id="btn-identity-bio" class="btn btn-secondary">Validar con Biometría</button>
-                    <span id="identity-status" class="badge badge-warning" style="margin-left: auto;">Pendiente</span>
-                </div>
-            </div>
-
-            <div id="sign-payment" class="card" style="margin-bottom: var(--space-md);">
-                <div class="card-header">
-                    <h3 class="card-title">Pago</h3>
-                </div>
-                <div class="card-body" style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-weight: 600;">Transbank (Mock)</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted);" id="payment-amount">Monto: -</div>
+            <div id="sign-steps" style="display: flex; flex-direction: column; gap: var(--space-md);">
+                <div class="card" data-step="1">
+                    <div class="card-header">
+                        <h3 class="card-title">1. Clave Única (Simulada)</h3>
+                        <span id="step1-status" class="badge badge-warning">Pendiente</span>
                     </div>
-                    <button id="btn-pay" class="btn btn-primary">Pagar</button>
-                </div>
-            </div>
-
-            <div id="sign-signature" class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Firma</h3>
-                </div>
-                <div class="card-body">
-                    <div class="signature-pad-wrapper"
-                        style="border: 2px dashed var(--border); border-radius: var(--radius-md); position: relative; height: 200px; background-color: #fff; touch-action: none;">
-                        <canvas id="sign-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
-                        <div id="sign-placeholder"
-                            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-light); pointer-events: none; opacity: 0.5;">
-                            Firmar aquí
+                    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600;">Ingreso con Clave Única</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Simula el login del firmante</div>
                         </div>
+                        <button id="btn-step1" class="btn btn-primary">Simular Clave Única OK</button>
                     </div>
+                </div>
 
-                    <div style="display: flex; gap: var(--space-md); margin-top: var(--space-md);">
-                        <button id="btn-sign-clear" class="btn btn-ghost" style="color: var(--danger);">Borrar</button>
-                        <div style="flex: 1;"></div>
-                        <button id="btn-sign-confirm" class="btn btn-primary">Confirmar Firma</button>
+                <div class="card" data-step="2">
+                    <div class="card-header">
+                        <h3 class="card-title">2. Biometría (Simulada)</h3>
+                        <span id="step2-status" class="badge badge-warning">Pendiente</span>
+                    </div>
+                    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600;">Validación biométrica</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Simula la verificación biométrica</div>
+                        </div>
+                        <button id="btn-step2" class="btn btn-primary" disabled>Simular Biometría OK</button>
+                    </div>
+                </div>
+
+                <div class="card" data-step="3">
+                    <div class="card-header">
+                        <h3 class="card-title">3. Pago (Transbank Mock)</h3>
+                        <span id="step3-status" class="badge badge-warning">Pendiente</span>
+                    </div>
+                    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600;">Pago antes de firma</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);" id="payment-amount">Monto: -</div>
+                        </div>
+                        <button id="btn-step3" class="btn btn-primary" disabled>Simular Pago OK</button>
+                    </div>
+                </div>
+
+                <div class="card" data-step="4">
+                    <div class="card-header">
+                        <h3 class="card-title">4. Firma</h3>
+                        <span id="step4-status" class="badge badge-warning">Pendiente</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="signature-pad-wrapper"
+                            style="border: 2px dashed var(--border); border-radius: var(--radius-md); position: relative; height: 200px; background-color: #fff; touch-action: none;">
+                            <canvas id="sign-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+                            <div id="sign-placeholder"
+                                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-light); pointer-events: none; opacity: 0.5;">
+                                Firmar aquí
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: var(--space-md); margin-top: var(--space-md);">
+                            <button id="btn-sign-clear" class="btn btn-ghost" style="color: var(--danger);">Borrar</button>
+                            <div style="flex: 1;"></div>
+                            <button id="btn-sign-confirm" class="btn btn-primary" disabled>Firmar y Enviar</button>
+                        </div>
                     </div>
                 </div>
             </div>

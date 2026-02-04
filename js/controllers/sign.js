@@ -1,6 +1,7 @@
 import Storage from '../storage.js';
 import StateMachine from '../stateMachine.js';
 import Providers from '../providers.js';
+import Billing from '../billing.js';
 import Audit from '../audit.js';
 import UI from '../ui.js';
 
@@ -16,30 +17,51 @@ const SignController = {
             return this.showStatus('Token inválido o ausente.', 'error');
         }
 
-        const token = Storage.list('global', 'signingTokens').find(t => t.id === tokenValue || t.token === tokenValue);
+        const token = Storage.list('global', 'signingTokens').find(t => t.tokenId === tokenValue || t.id === tokenValue);
         if (!token) {
             return this.showStatus('Token inválido.', 'error');
-        }
-        if (token.status !== 'active') {
-            return this.showStatus('Este token ya fue utilizado o está inactivo.', 'warning');
-        }
-        if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
-            return this.showStatus('El token ha expirado.', 'warning');
         }
 
         this.token = token;
         this.scope = Storage.tenantScope(token.tenantId);
         this.signatureRequest = Storage.findById(this.scope, 'signature_requests', token.signatureRequestId);
         this.procedure = Storage.findById(this.scope, 'procedures', token.procedureId);
+        this.isPayer = ['payer', 'signer_payer'].includes(this.signatureRequest?.role);
+
+        if (token.status !== 'active') {
+            if (this.signatureRequest && this.signatureRequest.status === 'signed') {
+                return this.showFinalStatus(token, 'Este documento ya fue firmado.');
+            }
+            return this.showFinalStatus(token, 'Este token ya fue utilizado o está inactivo.');
+        }
+
+        if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
+            Storage.update('global', 'signingTokens', token.id, { status: 'expired' });
+            if (this.signatureRequest && this.signatureRequest.status === 'signed') {
+                return this.showFinalStatus(token, 'Este documento ya fue firmado.');
+            }
+            return this.showFinalStatus(token, 'El token ha expirado.');
+        }
+
+        if ((token.attempts || 0) >= 10) {
+            Storage.update('global', 'signingTokens', token.id, { status: 'blocked' });
+            return this.showFinalStatus(token, 'El token superó el máximo de intentos.');
+        }
+
+        Storage.update('global', 'signingTokens', token.id, { attempts: (token.attempts || 0) + 1 });
 
         if (!this.signatureRequest || !this.procedure) {
             return this.showStatus('No se pudo cargar el trámite asociado.', 'error');
         }
 
+        if (this.signatureRequest.status === 'signed') {
+            return this.showFinalStatus(token, 'Este documento ya fue firmado.');
+        }
+
         this.setupUI();
-        this.setupIdentity();
-        this.setupPayment();
+        this.setupSteps();
         this.setupSignaturePad();
+        this.updateStepState();
     },
 
     showStatus(message, type) {
@@ -50,96 +72,131 @@ const SignController = {
         if (type === 'error') this.statusBox.querySelector('p').style.color = 'var(--danger)';
     },
 
+    showFinalStatus(token, message) {
+        this.contentBox.style.display = 'none';
+        this.statusBox.style.display = 'block';
+        this.statusBox.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+    },
+
     setupUI() {
         document.getElementById('sign-title').innerText = this.procedure.notaryPacket?.deal?.name || 'Trámite';
         document.getElementById('sign-subtitle').innerText = this.signatureRequest.participant?.name || 'Firmante';
         const statusBadge = document.getElementById('sign-procedure-status');
         statusBadge.innerText = this.procedure.status;
+
+        const amount = this.procedure.notaryPacket?.deal?.value || 29990;
+        document.getElementById('payment-amount').innerText = `Monto: ${amount} CLP (mock)`;
     },
 
-    setupIdentity() {
-        const identitySection = document.getElementById('sign-identity');
-        const statusBadge = document.getElementById('identity-status');
-        const mode = this.procedure.identityPolicy?.mode || 'none';
+    setupSteps() {
+        document.getElementById('btn-step1').addEventListener('click', () => this.completeClaveUnica());
+        document.getElementById('btn-step2').addEventListener('click', () => this.completeBiometrics());
+        document.getElementById('btn-step3').addEventListener('click', () => this.completePayment());
+    },
 
-        if (mode === 'none') {
-            identitySection.style.display = 'none';
-            return;
-        }
+    updateStepState() {
+        const identity = this.signatureRequest.identity || { claveUnica: null, biometrics: null };
+        const payment = this.signatureRequest.payment || { status: 'pending' };
+        const procedurePaymentPaid = (this.procedure.flags?.paymentsOk === true) || Storage.list(this.scope, 'payments').some(p => p.procedureId === this.procedure.id && p.status === 'paid');
 
-        const evidence = this.signatureRequest.identityEvidence || { clave: false, bio: false };
-        const updateStatus = () => {
-            const verified = this.isIdentityVerified(mode, evidence);
-            statusBadge.innerText = verified ? 'Verificado' : 'Pendiente';
-            statusBadge.className = `badge badge-${verified ? 'success' : 'warning'}`;
-            if (verified) {
-                this.signatureRequest.identityStatus = 'verified';
-                this.signatureRequest.identityEvidence = evidence;
-                Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
-                Audit.append(this.token.tenantId, { action: 'IDENTITY_OK', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
-                if (this.procedure.status === 'in_identity') {
-                    this.applyProcedureEvent('IDENTITY_OK');
-                }
+        const step1Done = !!identity.claveUnica;
+        const step2Done = !!identity.biometrics;
+        const step3Done = this.isPayer ? payment.status === 'paid' : procedurePaymentPaid;
+
+        this.setStepStatus('step1-status', step1Done);
+        this.setStepStatus('step2-status', step2Done);
+        this.setStepStatus('step3-status', step3Done);
+        this.setStepStatus('step4-status', this.signatureRequest.status === 'signed');
+
+        document.getElementById('btn-step1').disabled = step1Done;
+        document.getElementById('btn-step2').disabled = !step1Done || step2Done;
+        document.getElementById('btn-step3').disabled = !step2Done || step3Done || !this.isPayer;
+        document.getElementById('btn-sign-confirm').disabled = !step3Done;
+    },
+
+    setStepStatus(id, done) {
+        const el = document.getElementById(id);
+        el.className = `badge badge-${done ? 'success' : 'warning'}`;
+        el.innerText = done ? 'OK' : 'Pendiente';
+    },
+
+    completeClaveUnica() {
+        const identity = this.signatureRequest.identity || { claveUnica: null, biometrics: null };
+        if (identity.claveUnica) return;
+        identity.claveUnica = {
+            verifiedAt: new Date().toISOString(),
+            simulatedUser: {
+                rut: this.signatureRequest.participant?.rut || '11.111.111-1',
+                name: this.signatureRequest.participant?.name || 'Firmante'
             }
         };
-
-        const btnClave = document.getElementById('btn-identity-clave');
-        const btnBio = document.getElementById('btn-identity-bio');
-
-        btnClave.addEventListener('click', () => {
-            evidence.clave = true;
-            updateStatus();
-            UI.showToast('Clave Única validada (mock)', 'success');
-        });
-        btnBio.addEventListener('click', () => {
-            evidence.bio = true;
-            updateStatus();
-            UI.showToast('Biometría validada (mock)', 'success');
-        });
-
-        updateStatus();
+        this.signatureRequest.identity = identity;
+        Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
+        Audit.append(this.token.tenantId, { action: 'signing.claveunica_ok', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
+        UI.showToast('Clave Única validada (mock)', 'success');
+        this.updateStepState();
     },
 
-    setupPayment() {
-        const paymentSection = document.getElementById('sign-payment');
-        const paymentRequired = this.procedure.paymentPolicy?.requireBeforeSignature || ['payer', 'signer_payer'].includes(this.signatureRequest.role);
+    completeBiometrics() {
+        const identity = this.signatureRequest.identity || { claveUnica: null, biometrics: null };
+        if (!identity.claveUnica || identity.biometrics) return;
+        identity.biometrics = {
+            verifiedAt: new Date().toISOString(),
+            scoreMock: 0.91,
+            resultMock: 'pass'
+        };
+        this.signatureRequest.identity = identity;
+        Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
+        const allRequests = Storage.list(this.scope, 'signature_requests').filter(r => r.procedureId === this.procedure.id);
+        const allVerified = allRequests.every(r => r.identity?.biometrics);
+        if (allVerified) {
+            this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, {
+                flags: { ...this.procedure.flags, identityOk: true }
+            });
+        }
+        Audit.append(this.token.tenantId, { action: 'signing.biometrics_ok', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
+        UI.showToast('Biometría validada (mock)', 'success');
+        this.updateStepState();
+    },
 
-        if (!paymentRequired) {
-            paymentSection.style.display = 'none';
+    completePayment() {
+        if (!this.isPayer) {
+            UI.showToast('El pago debe ser realizado por el pagador asignado', 'warning');
             return;
         }
+        const payment = this.signatureRequest.payment || { status: 'pending' };
+        if (payment.status === 'paid') return;
 
-        const amount = this.procedure.notaryPacket?.deal?.value || 0;
-        document.getElementById('payment-amount').innerText = `Monto: ${amount} UF`;
+        const externalId = `tbk_${this.procedure.id}_${this.signatureRequest.id}`;
+        const result = Providers.recordEvent(this.token.tenantId, 'transbank', externalId, { amount: 29990 });
+        if (!result.created) {
+            UI.showToast('Pago ya registrado', 'info');
+        }
 
-        const btnPay = document.getElementById('btn-pay');
-        btnPay.addEventListener('click', () => {
-            if (this.signatureRequest.paymentStatus === 'paid') {
-                UI.showToast('Pago ya registrado', 'info');
-                return;
-            }
-            const externalId = `tbk_${Date.now()}`;
-            const result = Providers.recordEvent(this.token.tenantId, 'transbank', externalId, { amount });
-            if (!result.created) {
-                UI.showToast('Evento duplicado ignorado', 'warning');
-                return;
-            }
+        payment.status = 'paid';
+        payment.paidAt = new Date().toISOString();
+        this.signatureRequest.payment = payment;
+        Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
+
+        const existingPayment = Storage.list(this.scope, 'payments').find(p => p.procedureId === this.procedure.id && (p.signatureRequestId === this.signatureRequest.id || !p.signatureRequestId));
+        if (!existingPayment) {
             Storage.add(this.scope, 'payments', {
                 procedureId: this.procedure.id,
                 signatureRequestId: this.signatureRequest.id,
-                amount,
+                amount: 29990,
                 status: 'paid'
             });
-            this.signatureRequest.paymentStatus = 'paid';
-            Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
-            Audit.append(this.token.tenantId, { action: 'PAYMENTS_OK', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
+        } else {
+            Storage.update(this.scope, 'payments', existingPayment.id, { status: 'paid', updatedAt: new Date().toISOString() });
+        }
 
-            if (this.procedure.status === 'in_payment') {
-                this.applyProcedureEvent('PAYMENTS_OK');
-            }
-
-            UI.showToast('Pago registrado (mock)', 'success');
+        this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, {
+            flags: { ...this.procedure.flags, paymentsOk: true }
         });
+
+        Audit.append(this.token.tenantId, { action: 'payment.paid_mock', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
+        UI.showToast('Pago registrado (mock)', 'success');
+        this.updateStepState();
     },
 
     setupSignaturePad() {
@@ -205,16 +262,12 @@ const SignController = {
         });
 
         btnConfirm.addEventListener('click', () => {
+            if (btnConfirm.disabled) {
+                UI.showToast('Completa los pasos anteriores primero', 'warning');
+                return;
+            }
             if (!hasSignature) {
                 UI.showToast('Dibuja tu firma antes de confirmar', 'warning');
-                return;
-            }
-            if (this.procedure.identityPolicy?.mode !== 'none' && this.signatureRequest.identityStatus !== 'verified') {
-                UI.showToast('Primero debes validar tu identidad', 'warning');
-                return;
-            }
-            if (this.procedure.paymentPolicy?.requireBeforeSignature && this.signatureRequest.paymentStatus !== 'paid') {
-                UI.showToast('Debes completar el pago antes de firmar', 'warning');
                 return;
             }
 
@@ -225,41 +278,58 @@ const SignController = {
                 userAgent: navigator.userAgent
             };
             Storage.update(this.scope, 'signature_requests', this.signatureRequest.id, this.signatureRequest);
-            Audit.append(this.token.tenantId, { action: 'SIGNATURE_SUBMITTED', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
 
             Storage.update('global', 'signingTokens', this.token.id, {
                 status: 'used',
                 usedAt: new Date().toISOString()
             });
 
-            const requests = Storage.list(this.scope, 'signature_requests').filter(r => r.procedureId === this.procedure.id);
-            const signedCount = requests.filter(r => r.status === 'signed').length;
+            Audit.append(this.token.tenantId, { action: 'signing.signed', procedureId: this.procedure.id, meta: { signatureRequestId: this.signatureRequest.id } });
 
-            if (signedCount === requests.length) {
-                this.applyProcedureEvent('SIGNED_ALL');
-            } else {
-                this.applyProcedureEvent('SIGNED_ONE');
-            }
+            this.advanceProcedureAfterSignature();
 
             UI.showToast('Firma registrada', 'success');
             this.showStatus('Firma completada. Puedes cerrar esta ventana.', 'success');
         });
     },
 
-    isIdentityVerified(mode, evidence) {
-        if (mode === 'claveunica_only') return evidence.clave;
-        if (mode === 'biometrics_only') return evidence.bio;
-        if (mode === 'either') return evidence.clave || evidence.bio;
-        if (mode === 'both') return evidence.clave && evidence.bio;
-        return true;
-    },
+    advanceProcedureAfterSignature() {
+        const requests = Storage.list(this.scope, 'signature_requests').filter(r => r.procedureId === this.procedure.id);
+        const signedCount = requests.filter(r => r.status === 'signed').length;
+        const allSigned = signedCount === requests.length;
 
-    applyProcedureEvent(event) {
+        let updated = this.procedure;
         try {
-            const updated = StateMachine.transition(this.procedure, event);
-            this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, updated);
+            updated = StateMachine.transition(updated, allSigned ? 'SIGNED_ALL' : 'SIGNED_ONE');
+            updated.flags = { ...updated.flags, signaturesOk: allSigned };
+            this.procedure = Storage.update(this.scope, 'procedures', updated.id, updated);
+            Audit.append(this.token.tenantId, { action: 'procedure.status_changed', procedureId: updated.id, meta: { status: updated.status } });
         } catch (err) {
-            console.error(err);
+            console.warn(err.message);
+        }
+
+        if (allSigned) {
+            if (this.procedure.notaryRequired) {
+                try {
+                    const notary = StateMachine.transition(this.procedure, 'OPEN_NOTARY');
+                    this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, notary);
+                    Audit.append(this.token.tenantId, { action: 'procedure.status_changed', procedureId: this.procedure.id, meta: { status: notary.status } });
+                } catch (err) {
+                    console.warn(err.message);
+                }
+            } else {
+                if (StateMachine.isCompleteEligible(this.procedure)) {
+                    try {
+                        const completed = StateMachine.transition(this.procedure, 'COMPLETE');
+                        this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, completed);
+                        Audit.append(this.token.tenantId, { action: 'procedure.status_changed', procedureId: this.procedure.id, meta: { status: completed.status } });
+                        Billing.ensureProcedureCompleted(this.token.tenantId, completed);
+                        Audit.append(this.token.tenantId, { action: 'billing.procedure_completed', procedureId: completed.id });
+                    } catch (err) {
+                        console.warn(err.message);
+                    }
+                }
+            }
         }
     }
 };

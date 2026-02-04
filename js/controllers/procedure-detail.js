@@ -4,7 +4,6 @@ import UI from '../ui.js';
 import StateMachine from '../stateMachine.js';
 import Audit from '../audit.js';
 import Billing from '../billing.js';
-import Providers from '../providers.js';
 
 const statusBadgeMap = {
     draft: 'neutral',
@@ -67,6 +66,11 @@ const ProceduresDetailController = {
         const notaryUser = Storage.list('global', 'users').find(u => u.uid === this.procedure.assignedNotary);
         document.getElementById('procedure-notary-user').innerText = notaryUser ? notaryUser.displayName : 'Sin asignar';
 
+        const subtitle = this.procedure.type ? `Tipo: ${this.procedure.type}` : '';
+        if (subtitle) {
+            document.getElementById('procedure-subtitle').innerText = `${this.procedure.notaryPacket?.tenant?.name || '-'} • ${subtitle}`;
+        }
+
         const actions = document.getElementById('procedure-actions');
         actions.innerHTML = '';
 
@@ -124,9 +128,11 @@ const ProceduresDetailController = {
 
     renderSignatureRequests() {
         const container = document.getElementById('signature-requests');
+        const linksContainer = document.getElementById('signature-links');
         const requests = Storage.list(this.scope, 'signature_requests').filter(r => r.procedureId === this.procedure.id);
         if (requests.length === 0) {
             container.innerHTML = UI.createEmptyState('No hay solicitudes de firma.', '✍️');
+            if (linksContainer) linksContainer.innerHTML = '';
             return;
         }
         container.innerHTML = '';
@@ -148,17 +154,45 @@ const ProceduresDetailController = {
                 </div>
                 <div style="display: flex; align-items: center; gap: var(--space-sm);">
                     <span class="badge badge-${statusBadge}">${req.status}</span>
-                    <button class="btn btn-sm btn-secondary" data-action="token">Generar Link</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        if (!linksContainer) return;
+        linksContainer.innerHTML = '';
+        const tokens = Storage.list('global', 'signingTokens');
+
+        requests.forEach(req => {
+            const activeToken = tokens.find(t => t.signatureRequestId === req.id && t.status === 'active');
+            const tokenValue = activeToken ? (activeToken.tokenId || activeToken.id) : null;
+            const link = tokenValue ? `${window.location.origin}${window.location.pathname}#/sign?token=${tokenValue}` : null;
+
+            const item = document.createElement('div');
+            item.style.border = '1px solid var(--border)';
+            item.style.borderRadius = 'var(--radius-md)';
+            item.style.padding = '10px';
+            item.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 6px;">${req.participant?.name || 'Firmante'} (${req.role})</div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap;">
+                    <input type="text" class="form-control" value="${link || 'Sin link activo'}" readonly style="font-size:0.75rem; flex:1; min-width: 240px;">
+                    <button class="btn btn-sm btn-secondary" data-copy="${link || ''}" ${link ? '' : 'disabled'}>Copiar</button>
+                    <button class="btn btn-sm btn-ghost" data-regen="${req.id}">Regenerar link</button>
                 </div>
             `;
 
-            card.querySelector('[data-action="token"]').addEventListener('click', () => {
-                const token = this.createSigningToken(req);
-                const link = `${window.location.origin}${window.location.pathname}#sign?token=${token}`;
-                window.prompt('Link de firma externa', link);
+            item.querySelector('[data-copy]')?.addEventListener('click', async (e) => {
+                const url = e.target.dataset.copy;
+                if (!url) return;
+                const copied = await UI.copyToClipboard(url);
+                UI.showToast(copied ? 'Link copiado' : 'No se pudo copiar', copied ? 'success' : 'warning');
             });
 
-            container.appendChild(card);
+            item.querySelector('[data-regen]')?.addEventListener('click', () => {
+                this.regenerateToken(req);
+            });
+
+            linksContainer.appendChild(item);
         });
     },
 
@@ -244,6 +278,7 @@ const ProceduresDetailController = {
             const updated = StateMachine.transition(this.procedure, event);
             this.procedure = Storage.update(this.scope, 'procedures', this.procedure.id, updated);
             Audit.append(this.tenantId, { action: event, procedureId: this.procedure.id });
+            Audit.append(this.tenantId, { action: 'procedure.status_changed', procedureId: this.procedure.id, meta: { status: this.procedure.status } });
             UI.showToast('Estado actualizado', 'success');
             this.loadProcedure();
         } catch (err) {
@@ -257,23 +292,36 @@ const ProceduresDetailController = {
             return;
         }
         this.handleTransition('COMPLETE');
-        Billing.ensureProcedureCompleted(this.tenantId, this.procedure);
-        Providers.recordEvent(this.tenantId, 'brevo', `procedure:${this.procedure.id}`, { type: 'procedure_completed' });
+        const billingEvent = Billing.ensureProcedureCompleted(this.tenantId, this.procedure);
+        if (billingEvent) {
+            Audit.append(this.tenantId, { action: 'billing.procedure_completed', procedureId: this.procedure.id });
+        }
     },
 
     createSigningToken(signatureRequest) {
-        const token = crypto.randomUUID();
-        Storage.add('global', 'signingTokens', {
-            id: token,
-            token,
+        const tokenId = crypto.randomUUID();
+        const token = Storage.add('global', 'signingTokens', {
+            id: tokenId,
+            tokenId,
             tenantId: this.tenantId,
             procedureId: this.procedure.id,
             signatureRequestId: signatureRequest.id,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+            roleInProcedure: signatureRequest.role,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             status: 'active',
             attempts: 0
         });
-        Audit.append(this.tenantId, { action: 'SIGN_TOKEN_CREATED', procedureId: this.procedure.id, meta: { signatureRequestId: signatureRequest.id } });
+        Audit.append(this.tenantId, { action: 'token.created', procedureId: this.procedure.id, meta: { signatureRequestId: signatureRequest.id } });
+        return token;
+    },
+
+    regenerateToken(signatureRequest) {
+        const tokens = Storage.list('global', 'signingTokens').filter(t => t.signatureRequestId === signatureRequest.id && t.status === 'active');
+        tokens.forEach(t => Storage.update('global', 'signingTokens', t.id, { status: 'revoked' }));
+        const token = this.createSigningToken(signatureRequest);
+        Audit.append(this.tenantId, { action: 'token.regenerated', procedureId: this.procedure.id, meta: { signatureRequestId: signatureRequest.id } });
+        UI.showToast('Link regenerado', 'success');
+        this.loadProcedure();
         return token;
     },
 

@@ -58,7 +58,8 @@ const Router = {
 
     async loadRoute() {
         let hash = window.location.hash.slice(1) || 'dashboard';
-        const [route] = hash.split('?');
+        let [route] = hash.split('?');
+        route = route.replace(/^\\//, '');
 
         const config = this.routes[route];
         if (!config) {
