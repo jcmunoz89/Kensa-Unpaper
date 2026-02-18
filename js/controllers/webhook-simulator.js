@@ -1,4 +1,4 @@
-import UI from '../ui.js';
+import UI from '../ui.js?v=2';
 
 const WebhookSimulatorController = {
     init() {

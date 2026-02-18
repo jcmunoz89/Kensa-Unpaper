@@ -3,7 +3,7 @@ import StateMachine from '../stateMachine.js';
 import Providers from '../providers.js';
 import Billing from '../billing.js';
 import Audit from '../audit.js';
-import UI from '../ui.js';
+import UI from '../ui.js?v=2';
 
 const SignController = {
     init() {

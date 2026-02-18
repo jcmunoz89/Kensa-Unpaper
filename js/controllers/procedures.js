@@ -1,7 +1,7 @@
 import Storage from '../storage.js';
 import Auth from '../auth.js';
 import Store from '../store.js';
-import UI from '../ui.js';
+import UI from '../ui.js?v=2';
 import Audit from '../audit.js';
 
 const statusBadgeMap = {
