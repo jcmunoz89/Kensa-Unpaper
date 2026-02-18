@@ -374,6 +374,9 @@ const SignaturesController = {
                     return;
                 }
 
+                const wizName = document.getElementById('wiz-name');
+                const name = wizName ? wizName.value : 'Trámite sin nombre';
+
                 const docVersionId = document.getElementById('wiz-doc-version').value;
                 let version = Storage.findById(this.scope, 'document_versions', docVersionId);
                 if (!version && docVersionId) {
@@ -405,9 +408,6 @@ const SignaturesController = {
                     UI.showToast('Selecciona un documento publicado', 'warning');
                     return;
                 }
-
-                const wizName = document.getElementById('wiz-name');
-                const name = wizName ? wizName.value : 'Trámite sin nombre';
 
                 const wizType = document.querySelector('input[name="wiz-type"]:checked');
                 const type = wizType ? wizType.value : 'cert';
