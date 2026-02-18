@@ -2,6 +2,7 @@ import Storage from '../storage.js';
 import Auth from '../auth.js';
 import Audit from '../audit.js';
 import UI from '../ui.js?v=2';
+import Store from '../store.js';
 
 const procedureTypeLabels = {
     cert: 'Certificación Notarial',
@@ -374,7 +375,32 @@ const SignaturesController = {
                 }
 
                 const docVersionId = document.getElementById('wiz-doc-version').value;
-                const version = Storage.findById(this.scope, 'document_versions', docVersionId);
+                let version = Storage.findById(this.scope, 'document_versions', docVersionId);
+                if (!version && docVersionId) {
+                    const fallbackDoc = Store.getById('documents', docVersionId);
+                    if (fallbackDoc && fallbackDoc.status === 'published') {
+                        version = {
+                            id: fallbackDoc.id,
+                            title: fallbackDoc.title,
+                            version: fallbackDoc.version,
+                            hash: fallbackDoc.hash
+                        };
+                    }
+                }
+                if (!version && docUploaded) {
+                    const fallbackName = (name && name.trim()) ? `Express ${name.trim()}` : 'Documento subido en Trámite Express';
+                    version = Storage.add(this.scope, 'document_versions', {
+                        dealId: null,
+                        title: fallbackName,
+                        version: 1,
+                        hash: `adhoc_${crypto.randomUUID()}`,
+                        content: '[express_upload]',
+                        status: 'published',
+                        source: 'express_upload',
+                        createdBy: this.session?.uid || 'system'
+                    });
+                    UI.showToast('Se utilizará el documento subido en este trámite.', 'info');
+                }
                 if (!version) {
                     UI.showToast('Selecciona un documento publicado', 'warning');
                     return;
@@ -452,8 +478,23 @@ const SignaturesController = {
     loadDocumentVersions(selectEl) {
         if (!selectEl) return;
         const versions = Storage.list(this.scope, 'document_versions').filter(v => !v.voidedAt);
+        const fallbackDocs = Store.getAll('documents')
+            .filter(d => d.status === 'published')
+            .map(d => ({
+                id: d.id,
+                title: d.title,
+                version: d.version,
+                hash: d.hash,
+                source: 'store_documents'
+            }));
+        const merged = [...versions];
+        fallbackDocs.forEach((doc) => {
+            const exists = merged.some((v) => v.id === doc.id || (v.hash && doc.hash && v.hash === doc.hash));
+            if (!exists) merged.push(doc);
+        });
+
         selectEl.innerHTML = '';
-        if (versions.length === 0) {
+        if (merged.length === 0) {
             const opt = document.createElement('option');
             opt.value = '';
             opt.innerText = 'No hay documentos publicados';
@@ -462,10 +503,10 @@ const SignaturesController = {
             return;
         }
         selectEl.disabled = false;
-        versions.forEach(v => {
+        merged.forEach(v => {
             const opt = document.createElement('option');
             opt.value = v.id;
-            opt.innerText = `${v.title || 'Documento'} v${v.version}`;
+            opt.innerText = `${v.title || 'Documento'} v${v.version || 1}`;
             selectEl.appendChild(opt);
         });
     },
