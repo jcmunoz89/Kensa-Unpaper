@@ -41,13 +41,17 @@ const SignaturesController = {
         requests.forEach(req => {
             const tr = document.createElement('tr');
             const isSigned = req.status === 'signed';
+            const safeName = UI.escapeHTML(req.participant?.name || 'Firmante');
+            const safeRole = UI.escapeHTML(req.role || 'signer');
+            const safeEmail = UI.escapeHTML(req.participant?.email || '-');
+            const safeReqId = UI.escapeHTML(req.id || '');
             tr.innerHTML = `
-                <td><strong>${req.participant?.name || 'Firmante'}</strong></td>
-                <td><span class="badge badge-neutral">${req.role || 'signer'}</span></td>
-                <td>${req.participant?.email || '-'}</td>
+                <td><strong>${safeName}</strong></td>
+                <td><span class="badge badge-neutral">${safeRole}</span></td>
+                <td>${safeEmail}</td>
                 <td><span class="badge badge-${isSigned ? 'success' : 'warning'}">${isSigned ? 'Firmado' : 'Pendiente'}</span></td>
                 <td>
-                    ${!isSigned ? `<button class="btn btn-sm btn-secondary btn-sign" data-id="${req.id}">Copiar Link</button>` : '✅'}
+                    ${!isSigned ? `<button class="btn btn-sm btn-secondary btn-sign" data-id="${safeReqId}">Copiar Link</button>` : '✅'}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -382,6 +386,7 @@ const SignaturesController = {
                 const wizType = document.querySelector('input[name="wiz-type"]:checked');
                 const type = wizType ? wizType.value : 'cert';
                 const notaryRequired = type !== 'fes';
+                const expressAmount = 29990;
 
                 const signerParticipants = participants.filter(p => p.role !== 'payer');
                 const landlord = signerParticipants[0] || participants[0];
@@ -397,7 +402,7 @@ const SignaturesController = {
                         landlord,
                         tenant,
                         property: { address: '-', rol: '-', price: '-' },
-                        deal: { id: 'express', name: name || `Trámite Express (${procedureTypeLabels[type]})`, value: 0 },
+                        deal: { id: 'express', name: name || `Trámite Express (${procedureTypeLabels[type]})`, value: expressAmount, currency: 'CLP' },
                         documentVersionRef: {
                             id: version.id,
                             title: version.title,
@@ -405,6 +410,8 @@ const SignaturesController = {
                             hash: version.hash
                         }
                     },
+                    amount: expressAmount,
+                    currency: 'CLP',
                     assignedNotary: null,
                     flags: { identityOk: false, paymentsOk: false, signaturesOk: false, notaryOk: !notaryRequired },
                     createdBy: this.session.uid
@@ -512,10 +519,12 @@ const SignaturesController = {
             const token = tokens.find(t => t.signatureRequestId === req.id);
             const tokenId = token ? (token.tokenId || token.id) : '';
             const link = this.buildLink(tokenId);
+            const safeName = UI.escapeHTML(req.participant.name || 'Firmante');
+            const safeRole = UI.escapeHTML(req.role || 'signer');
             return `
                 <tr>
-                    <td>${req.participant.name}</td>
-                    <td>${req.role}</td>
+                    <td>${safeName}</td>
+                    <td>${safeRole}</td>
                     <td>
                         <div style="display:flex; gap:8px; align-items:center;">
                             <input type="text" class="form-control" value="${link}" readonly style="font-size:0.75rem;">

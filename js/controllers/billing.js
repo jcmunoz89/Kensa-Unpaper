@@ -50,11 +50,14 @@ const BillingController = {
         empty.style.display = 'none';
         events.forEach(e => {
             const tr = document.createElement('tr');
+            const safeType = UI.escapeHTML(e.type || '-');
+            const safeProcedureId = UI.escapeHTML(e.procedureId || '-');
+            const currency = e.currency || 'CLP';
             tr.innerHTML = `
                 <td>${new Date(e.createdAt).toLocaleDateString()}</td>
-                <td>${e.type}</td>
-                <td>${e.procedureId}</td>
-                <td>${e.amount} ${e.currency || 'CLP'}</td>
+                <td>${safeType}</td>
+                <td>${safeProcedureId}</td>
+                <td>${UI.formatMoney(e.amount, currency)}</td>
             `;
             tbody.appendChild(tr);
         });

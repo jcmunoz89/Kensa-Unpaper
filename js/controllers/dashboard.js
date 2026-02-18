@@ -15,11 +15,21 @@ const DashboardController = {
                 document.getElementById('kpi-deals').innerText = "0";
                 document.getElementById('kpi-tasks').innerText = "0";
                 document.getElementById('kpi-signatures').innerText = "0";
-                document.getElementById('kpi-amount').innerText = UI.formatCurrency(0);
+                document.getElementById('kpi-amount').innerText = UI.formatMoney(0, 'UF');
             } else {
                 // Calculate real totals
-                const totalValue = deals.reduce((acc, d) => acc + Number(d.value), 0);
-                document.getElementById('kpi-amount').innerText = UI.formatCurrency(totalValue);
+                const totalUf = deals
+                    .filter((d) => (d.currency || 'UF') === 'UF')
+                    .reduce((acc, d) => acc + (Number(d.value) || 0), 0);
+                const totalClp = deals
+                    .filter((d) => d.currency === 'CLP')
+                    .reduce((acc, d) => acc + (Number(d.value) || 0), 0);
+
+                let amountLabel = UI.formatMoney(totalUf, 'UF');
+                if (totalClp > 0) {
+                    amountLabel += ` + ${UI.formatMoney(totalClp, 'CLP')}`;
+                }
+                document.getElementById('kpi-amount').innerText = amountLabel;
                 document.getElementById('kpi-tasks').innerText = "3"; // Mock
                 document.getElementById('kpi-signatures').innerText = signatures.length;
             }

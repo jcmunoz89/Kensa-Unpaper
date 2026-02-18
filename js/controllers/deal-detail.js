@@ -20,7 +20,8 @@ const DealDetailController = {
         // Render Header
         document.getElementById('d-title').innerText = deal.name;
         document.getElementById('d-subtitle').innerText = `ID: ${deal.id}`;
-        document.getElementById('d-amount').innerText = UI.formatCurrency(deal.value) + ' UF';
+        const dealCurrency = deal.currency || 'UF';
+        document.getElementById('d-amount').innerText = UI.formatMoney(deal.value, dealCurrency);
         document.getElementById('d-created-at').innerText = UI.formatDate(deal.createdAt);
 
         const stage = Store.getById('stages', deal.stageId);
@@ -31,12 +32,20 @@ const DealDetailController = {
         // Render Client
         const client = Store.getById('clients', deal.clientId);
         if (client) {
-            document.getElementById('d-client-info').innerHTML = `
-                <strong>${client.name}</strong><br>
-                ${client.email}<br>
-                ${client.phone || ''}
-            `;
-            document.getElementById('link-client').href = `#client-detail?id=${client.id}`;
+            const info = document.getElementById('d-client-info');
+            if (info) {
+                info.innerHTML = '';
+                const nameEl = document.createElement('strong');
+                nameEl.textContent = client.name || '-';
+                const emailEl = document.createElement('div');
+                emailEl.textContent = client.email || '-';
+                const phoneEl = document.createElement('div');
+                phoneEl.textContent = client.phone || '';
+                info.appendChild(nameEl);
+                info.appendChild(emailEl);
+                info.appendChild(phoneEl);
+            }
+            document.getElementById('link-client').href = `#client-detail?id=${encodeURIComponent(client.id || '')}`;
         }
 
         // Render Docs
@@ -56,13 +65,16 @@ const DealDetailController = {
                 item.style.border = '1px solid var(--border)';
                 item.style.borderRadius = 'var(--radius-md)';
                 item.style.backgroundColor = 'var(--surface)';
+                const safeTitle = UI.escapeHTML(doc.title || 'Documento');
+                const safeDocId = encodeURIComponent(doc.id || '');
+                const safeDealId = encodeURIComponent(deal.id || '');
 
                 item.innerHTML = `
                     <div>
-                        <div style="font-weight: 500;">${doc.title}</div>
+                        <div style="font-weight: 500;">${safeTitle}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">v${doc.version} • ${doc.status === 'published' ? 'Publicado' : 'Borrador'}</div>
                     </div>
-                    <a href="#document-editor?id=${doc.id}&dealId=${deal.id}" class="btn btn-sm btn-secondary">Abrir</a>
+                    <a href="#document-editor?id=${safeDocId}&dealId=${safeDealId}" class="btn btn-sm btn-secondary">Abrir</a>
                 `;
                 docsList.appendChild(item);
             });
@@ -99,7 +111,7 @@ const DealDetailController = {
                     landlord: property ? { name: client ? client.name : 'Cliente', rut: client ? client.rut : '-' } : null,
                     tenant: client ? { name: client.name, rut: client.rut, email: client.email, phone: client.phone } : null,
                     property: property ? { address: property.address, rol: property.rol, price: property.price } : null,
-                    deal: { id: deal.id, name: deal.name, value: deal.value },
+                    deal: { id: deal.id, name: deal.name, value: deal.value, currency: dealCurrency },
                     documentVersionRef: {
                         id: versionRef.id,
                         title: versionRef.title,
@@ -114,6 +126,8 @@ const DealDetailController = {
                     paymentPolicy: { requireBeforeSignature: false },
                     notaryRequired: true,
                     notaryPacket: packet,
+                    amount: Number(deal.value) || 0,
+                    currency: dealCurrency,
                     assignedNotary: null,
                     flags: { identityOk: false, paymentsOk: true, signaturesOk: false, notaryOk: false },
                     createdBy: Auth.getSession()?.uid || 'system'
@@ -139,10 +153,10 @@ const DealDetailController = {
 
         document.getElementById('payment-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const amount = document.getElementById('pay-amount').value;
+            const amount = Number(document.getElementById('pay-amount').value);
             const type = document.getElementById('pay-type').value;
 
-            UI.showToast(`Pago de ${UI.formatCurrency(amount)} (${type}) registrado exitosamente.`, 'success');
+            UI.showToast(`Pago de ${UI.formatMoney(amount, 'CLP')} (${type}) registrado exitosamente.`, 'success');
             payModal.style.display = 'none';
 
             const emptyState = document.querySelector('#payments-card .empty-state');
@@ -150,12 +164,18 @@ const DealDetailController = {
 
             const list = document.getElementById('payments-list');
             const item = document.createElement('div');
-            item.innerHTML = `
-                <div style="padding: 8px; border-bottom: 1px solid var(--divider); display: flex; justify-content: space-between;">
-                    <span>${type}</span>
-                    <strong>${UI.formatCurrency(amount)}</strong>
-                </div>
-            `;
+            item.style.padding = '8px';
+            item.style.borderBottom = '1px solid var(--divider)';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+
+            const typeSpan = document.createElement('span');
+            typeSpan.textContent = type;
+            const amountStrong = document.createElement('strong');
+            amountStrong.textContent = UI.formatMoney(amount, 'CLP');
+
+            item.appendChild(typeSpan);
+            item.appendChild(amountStrong);
             list.appendChild(item);
         });
     }

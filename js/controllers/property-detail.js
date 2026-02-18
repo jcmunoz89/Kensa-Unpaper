@@ -22,9 +22,11 @@ const PropertyDetailController = {
 
         const owner = Store.getById('clients', prop.ownerId);
         if (owner) {
+            const safeOwnerName = UI.escapeHTML(owner.name || '-');
+            const safeOwnerId = encodeURIComponent(owner.id || '');
             document.getElementById('p-owner').innerHTML = `
-                <strong>${owner.name}</strong><br>
-                <a href="#client-detail?id=${owner.id}" class="btn btn-sm btn-ghost" style="margin-top: 8px; padding-left: 0;">Ver Perfil</a>
+                <strong>${safeOwnerName}</strong><br>
+                <a href="#client-detail?id=${safeOwnerId}" class="btn btn-sm btn-ghost" style="margin-top: 8px; padding-left: 0;">Ver Perfil</a>
             `;
         }
 

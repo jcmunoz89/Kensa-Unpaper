@@ -105,23 +105,32 @@ const ProceduresDetailController = {
     renderPacket() {
         const packet = this.procedure.notaryPacket || {};
         const container = document.getElementById('procedure-packet');
+        const tenantName = UI.escapeHTML(packet.tenant?.name || '-');
+        const tenantRut = UI.escapeHTML(packet.tenant?.rut || '');
+        const tenantEmail = UI.escapeHTML(packet.tenant?.email || '');
+        const propertyAddress = UI.escapeHTML(packet.property?.address || '-');
+        const propertyRol = UI.escapeHTML(packet.property?.rol || '-');
+        const propertyPrice = UI.escapeHTML(packet.property?.price || '-');
+        const docTitle = UI.escapeHTML(packet.documentVersionRef?.title || '-');
+        const docVersion = UI.escapeHTML(packet.documentVersionRef?.version || '-');
+        const docHash = UI.escapeHTML(packet.documentVersionRef?.hash ? packet.documentVersionRef.hash.substring(0, 12) : '-');
         container.innerHTML = `
             <div style="margin-bottom: var(--space-md);">
                 <strong>Cliente</strong><br>
-                ${packet.tenant?.name || '-'}<br>
-                ${packet.tenant?.rut || ''}<br>
-                ${packet.tenant?.email || ''}
+                ${tenantName}<br>
+                ${tenantRut}<br>
+                ${tenantEmail}
             </div>
             <div style="margin-bottom: var(--space-md);">
                 <strong>Propiedad</strong><br>
-                ${packet.property?.address || '-'}<br>
-                ROL: ${packet.property?.rol || '-'}<br>
-                UF ${packet.property?.price || '-'}
+                ${propertyAddress}<br>
+                ROL: ${propertyRol}<br>
+                UF ${propertyPrice}
             </div>
             <div>
                 <strong>Documento</strong><br>
-                ${packet.documentVersionRef?.title || '-'} v${packet.documentVersionRef?.version || '-'}<br>
-                Hash: ${packet.documentVersionRef?.hash ? packet.documentVersionRef.hash.substring(0, 12) : '-'}
+                ${docTitle} v${docVersion}<br>
+                Hash: ${docHash}
             </div>
         `;
     },
@@ -146,14 +155,17 @@ const ProceduresDetailController = {
             card.style.alignItems = 'center';
 
             const statusBadge = req.status === 'signed' ? 'success' : 'warning';
+            const participantName = UI.escapeHTML(req.participant?.name || 'Firmante');
+            const participantEmail = UI.escapeHTML(req.participant?.email || '-');
+            const participantStatus = UI.escapeHTML(req.status || 'pending');
 
             card.innerHTML = `
                 <div>
-                    <div style="font-weight: 600;">${req.participant?.name || 'Firmante'}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">${req.participant?.email || '-'}</div>
+                    <div style="font-weight: 600;">${participantName}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">${participantEmail}</div>
                 </div>
                 <div style="display: flex; align-items: center; gap: var(--space-sm);">
-                    <span class="badge badge-${statusBadge}">${req.status}</span>
+                    <span class="badge badge-${statusBadge}">${participantStatus}</span>
                 </div>
             `;
             container.appendChild(card);
@@ -167,13 +179,15 @@ const ProceduresDetailController = {
             const activeToken = tokens.find(t => t.signatureRequestId === req.id && t.status === 'active');
             const tokenValue = activeToken ? (activeToken.tokenId || activeToken.id) : null;
             const link = tokenValue ? `${window.location.origin}${window.location.pathname}#/sign?token=${tokenValue}` : null;
+            const safeParticipant = UI.escapeHTML(req.participant?.name || 'Firmante');
+            const safeRole = UI.escapeHTML(req.role || 'signer');
 
             const item = document.createElement('div');
             item.style.border = '1px solid var(--border)';
             item.style.borderRadius = 'var(--radius-md)';
             item.style.padding = '10px';
             item.innerHTML = `
-                <div style="font-weight: 600; margin-bottom: 6px;">${req.participant?.name || 'Firmante'} (${req.role})</div>
+                <div style="font-weight: 600; margin-bottom: 6px;">${safeParticipant} (${safeRole})</div>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap;">
                     <input type="text" class="form-control" value="${link || 'Sin link activo'}" readonly style="font-size:0.75rem; flex:1; min-width: 240px;">
                     <button class="btn btn-sm btn-secondary" data-copy="${link || ''}" ${link ? '' : 'disabled'}>Copiar</button>
@@ -197,20 +211,23 @@ const ProceduresDetailController = {
     },
 
     renderTimeline() {
-        const events = Storage.list(this.scope, 'audit_events').filter(e => e.procedureId === this.procedure.id);
+        const events = Storage.list(this.scope, 'audit_events')
+            .filter(e => e.procedureId === this.procedure.id)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         const container = document.getElementById('procedure-timeline');
         if (events.length === 0) {
             container.innerHTML = UI.createEmptyState('Sin eventos registrados.', '🕒');
             return;
         }
         container.innerHTML = '';
-        events.slice().reverse().forEach(e => {
+        events.forEach(e => {
             const item = document.createElement('div');
             item.style.padding = '8px';
             item.style.border = '1px solid var(--border)';
             item.style.borderRadius = 'var(--radius-md)';
+            const safeAction = UI.escapeHTML(e.action || '-');
             item.innerHTML = `
-                <div style="font-weight: 600; font-size: 0.85rem;">${e.action}</div>
+                <div style="font-weight: 600; font-size: 0.85rem;">${safeAction}</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">${new Date(e.createdAt).toLocaleString()}</div>
             `;
             container.appendChild(item);
@@ -235,9 +252,11 @@ const ProceduresDetailController = {
                 item.style.padding = '8px';
                 item.style.border = '1px solid var(--border)';
                 item.style.borderRadius = 'var(--radius-md)';
+                const safeUser = UI.escapeHTML(user ? user.displayName : g.granteeUid);
+                const safeStatus = UI.escapeHTML(g.status || '-');
                 item.innerHTML = `
-                    <div style="font-weight: 600;">${user ? user.displayName : g.granteeUid}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">${g.status} • expira ${new Date(g.expiresAt).toLocaleDateString()}</div>
+                    <div style="font-weight: 600;">${safeUser}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">${safeStatus} • expira ${new Date(g.expiresAt).toLocaleDateString()}</div>
                 `;
                 container.appendChild(item);
             });
@@ -254,14 +273,16 @@ const ProceduresDetailController = {
         const requests = Storage.list(this.scope, 'signature_requests').filter(r => r.procedureId === this.procedure.id);
         if (requests.length === 0) {
             const participant = this.procedure.notaryPacket?.tenant || {};
-            const role = this.procedure.paymentPolicy?.requireBeforeSignature ? 'signer_payer' : 'signer';
+            const paymentRequired = this.procedure.paymentPolicy?.requireBeforeSignature === true;
+            const role = paymentRequired ? 'signer_payer' : 'signer';
             Storage.add(this.scope, 'signature_requests', {
                 procedureId: this.procedure.id,
                 tenantId: this.tenantId,
                 role,
                 status: 'pending',
                 identityStatus: this.procedure.identityPolicy?.mode === 'none' ? 'verified' : 'pending',
-                paymentStatus: this.procedure.paymentPolicy?.requireBeforeSignature ? 'pending' : 'not_required',
+                payment: { status: paymentRequired ? 'pending' : 'not_required' },
+                paymentPercent: paymentRequired ? 100 : 0,
                 participant: {
                     name: participant.name || 'Firmante',
                     rut: participant.rut || '-',

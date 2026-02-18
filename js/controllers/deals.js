@@ -41,11 +41,29 @@ const DealsController = {
                 const clientSelect = document.getElementById('deal-client');
                 const propSelect = document.getElementById('deal-property');
 
-                clientSelect.innerHTML = '<option value="">Seleccionar Cliente...</option>';
-                clients.forEach(c => clientSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+                clientSelect.innerHTML = '';
+                const clientPlaceholder = document.createElement('option');
+                clientPlaceholder.value = '';
+                clientPlaceholder.textContent = 'Seleccionar Cliente...';
+                clientSelect.appendChild(clientPlaceholder);
+                clients.forEach((c) => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.name;
+                    clientSelect.appendChild(opt);
+                });
 
-                propSelect.innerHTML = '<option value="">Seleccionar Propiedad...</option>';
-                props.forEach(p => propSelect.innerHTML += `<option value="${p.id}">${p.address}</option>`);
+                propSelect.innerHTML = '';
+                const propPlaceholder = document.createElement('option');
+                propPlaceholder.value = '';
+                propPlaceholder.textContent = 'Seleccionar Propiedad...';
+                propSelect.appendChild(propPlaceholder);
+                props.forEach((p) => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.address;
+                    propSelect.appendChild(opt);
+                });
 
                 dealModal.style.display = 'flex';
             });
@@ -57,13 +75,15 @@ const DealsController = {
             e.preventDefault();
             const clientSelect = document.getElementById('deal-client');
             const propSelect = document.getElementById('deal-property');
+            const rawValue = Number(document.getElementById('deal-value').value);
 
             const data = {
                 name: document.getElementById('deal-name').value,
                 clientId: clientSelect.value,
                 clientName: clientSelect.options[clientSelect.selectedIndex].text,
                 propertyId: propSelect.value,
-                value: document.getElementById('deal-value').value,
+                value: Number.isFinite(rawValue) ? rawValue : 0,
+                currency: 'UF',
                 stageId: this.stages[0].id // First stage
             };
 
@@ -92,10 +112,11 @@ const DealsController = {
             col.style.display = 'flex';
             col.style.flexDirection = 'column';
             col.style.maxHeight = '100%';
+            const safeStageName = UI.escapeHTML(stage.name || '');
 
             col.innerHTML = `
                 <div style="padding: var(--space-md); border-bottom: 1px solid var(--border); font-weight: 600; color: var(--secondary); display: flex; justify-content: space-between;">
-                    <span>${stage.name}</span>
+                    <span>${safeStageName}</span>
                     <span class="badge badge-neutral">${stageDeals.length}</span>
                 </div>
                 <div class="kanban-col-body" style="padding: var(--space-sm); overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: var(--space-sm);">
@@ -110,12 +131,15 @@ const DealsController = {
                 card.className = 'card';
                 card.style.boxShadow = 'var(--shadow-sm)';
                 card.style.cursor = 'pointer';
+                const safeDealName = UI.escapeHTML(deal.name || '');
+                const safeClientName = UI.escapeHTML(deal.clientName || 'Cliente');
+                const dealCurrency = deal.currency || 'UF';
                 card.innerHTML = `
                     <div class="card-body" style="padding: var(--space-md);">
-                        <h4 style="font-size: 0.9rem; margin-bottom: 4px;">${deal.name}</h4>
-                        <p style="font-size: 0.8rem; margin-bottom: 8px;">${UI.formatCurrency(deal.value)} UF</p>
+                        <h4 style="font-size: 0.9rem; margin-bottom: 4px;">${safeDealName}</h4>
+                        <p style="font-size: 0.8rem; margin-bottom: 8px;">${UI.formatMoney(deal.value, dealCurrency)}</p>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="badge badge-info" style="font-size: 0.7rem;">${deal.clientName || 'Cliente'}</span>
+                            <span class="badge badge-info" style="font-size: 0.7rem;">${safeClientName}</span>
                             <button class="btn btn-sm btn-ghost btn-move" data-id="${deal.id}" style="padding: 2px 6px;">→</button>
                         </div>
                     </div>

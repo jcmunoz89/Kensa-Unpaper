@@ -91,15 +91,24 @@ const ClientsController = {
 
         filtered.forEach(client => {
             const tr = document.createElement('tr');
+            const name = UI.escapeHTML(client.name || '-');
+            const rut = UI.escapeHTML(client.rut || '-');
+            const email = UI.escapeHTML(client.email || '-');
+            const phone = UI.escapeHTML(client.phone || '-');
+            const clientType = client.type === 'natural' ? 'Natural' : 'Jurídica';
+            const kycStatusLabel = client.kycStatus === 'approved' ? 'Aprobado' : 'Pendiente';
+            const safeClientType = UI.escapeHTML(clientType);
+            const safeKycStatus = UI.escapeHTML(kycStatusLabel);
+            const safeClientId = encodeURIComponent(client.id || '');
             tr.innerHTML = `
-                <td data-label="Nombre"><strong>${client.name}</strong></td>
-                <td data-label="RUT">${client.rut}</td>
-                <td data-label="Tipo"><span class="badge badge-neutral">${client.type === 'natural' ? 'Natural' : 'Jurídica'}</span></td>
-                <td data-label="Email">${client.email}</td>
-                <td data-label="Teléfono">${client.phone || '-'}</td>
-                <td data-label="KYC"><span class="badge badge-${client.kycStatus === 'approved' ? 'success' : 'warning'}">${client.kycStatus === 'approved' ? 'Aprobado' : 'Pendiente'}</span></td>
+                <td data-label="Nombre"><strong>${name}</strong></td>
+                <td data-label="RUT">${rut}</td>
+                <td data-label="Tipo"><span class="badge badge-neutral">${safeClientType}</span></td>
+                <td data-label="Email">${email}</td>
+                <td data-label="Teléfono">${phone}</td>
+                <td data-label="KYC"><span class="badge badge-${client.kycStatus === 'approved' ? 'success' : 'warning'}">${safeKycStatus}</span></td>
                 <td data-label="Acciones">
-                    <a href="#client-detail?id=${client.id}" class="btn btn-sm btn-ghost">Ver</a>
+                    <a href="#client-detail?id=${safeClientId}" class="btn btn-sm btn-ghost">Ver</a>
                 </td>
             `;
             tbody.appendChild(tr);

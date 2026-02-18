@@ -109,6 +109,7 @@ const ProceduresController = {
                 const deal = Store.getById('deals', dealId);
                 const client = deal ? Store.getById('clients', deal.clientId) : null;
                 const property = deal ? Store.getById('properties', deal.propertyId) : null;
+                const dealCurrency = deal?.currency || 'UF';
                 const version = this.getDocumentVersions(dealId).find(v => v.id === versionId);
                 if (!deal || !version) return;
 
@@ -120,7 +121,7 @@ const ProceduresController = {
                     landlord: property ? { name: client ? client.name : 'Cliente', rut: client ? client.rut : '-' } : null,
                     tenant: client ? { name: client.name, rut: client.rut, email: client.email, phone: client.phone } : null,
                     property: property ? { address: property.address, rol: property.rol, price: property.price } : null,
-                    deal: { id: deal.id, name: deal.name, value: deal.value },
+                    deal: { id: deal.id, name: deal.name, value: deal.value, currency: dealCurrency },
                     documentVersionRef: {
                         id: version.id,
                         version: version.version,
@@ -137,6 +138,8 @@ const ProceduresController = {
                     paymentPolicy: { requireBeforeSignature: paymentRequired },
                     notaryRequired,
                     notaryPacket,
+                    amount: Number(deal.value) || 0,
+                    currency: dealCurrency,
                     assignedNotary: null,
                     flags: { identityOk: identityMode === 'none', paymentsOk: !paymentRequired, signaturesOk: false, notaryOk: !notaryRequired },
                     createdBy: session ? session.uid : 'system'
@@ -202,14 +205,19 @@ const ProceduresController = {
             const tr = document.createElement('tr');
             const badge = statusBadgeMap[p.status] || 'neutral';
             const notaryUser = Storage.list('global', 'users').find(u => u.uid === p.assignedNotary);
+            const safeDealName = UI.escapeHTML(p.notaryPacket?.deal?.name || '-');
+            const safeClientName = UI.escapeHTML(p.notaryPacket?.tenant?.name || '-');
+            const safeStatus = UI.escapeHTML(p.status || '-');
+            const safeNotary = UI.escapeHTML(notaryUser ? notaryUser.displayName : 'Sin asignar');
+            const safeProcedureId = encodeURIComponent(p.id || '');
             tr.innerHTML = `
                 <td data-label="ID">${p.id.slice(0, 6)}</td>
-                <td data-label="Negocio">${p.notaryPacket?.deal?.name || '-'}</td>
-                <td data-label="Cliente">${p.notaryPacket?.tenant?.name || '-'}</td>
-                <td data-label="Estado"><span class="badge badge-${badge}">${p.status}</span></td>
-                <td data-label="Notario">${notaryUser ? notaryUser.displayName : 'Sin asignar'}</td>
+                <td data-label="Negocio">${safeDealName}</td>
+                <td data-label="Cliente">${safeClientName}</td>
+                <td data-label="Estado"><span class="badge badge-${badge}">${safeStatus}</span></td>
+                <td data-label="Notario">${safeNotary}</td>
                 <td data-label="Acciones">
-                    <a href="#procedure-detail?id=${p.id}" class="btn btn-sm btn-ghost">Ver</a>
+                    <a href="#procedure-detail?id=${safeProcedureId}" class="btn btn-sm btn-ghost">Ver</a>
                 </td>
             `;
             tbody.appendChild(tr);

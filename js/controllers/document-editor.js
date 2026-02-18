@@ -21,7 +21,7 @@ const DocumentEditorController = {
             this.currentDoc = Store.getById('documents', docId);
             if (this.currentDoc) {
                 document.getElementById('doc-title').value = this.currentDoc.title;
-                this.editor.innerHTML = this.currentDoc.content;
+                this.editor.innerHTML = UI.sanitizeRichHTML(this.currentDoc.content || '');
                 this.updateStatusUI(this.currentDoc);
             }
         }
@@ -53,8 +53,12 @@ const DocumentEditorController = {
         }
 
         document.getElementById('btn-preview').addEventListener('click', () => {
-            const content = this.editor.innerHTML;
+            const content = UI.sanitizeRichHTML(this.editor.innerHTML);
             const win = window.open('', '', 'width=800,height=900');
+            if (!win || !win.document) {
+                UI.showToast('El navegador bloqueó la ventana de previsualización.', 'warning');
+                return;
+            }
             win.document.write(`
                 <html>
                     <head>
@@ -80,7 +84,8 @@ const DocumentEditorController = {
 
     async save(isPublishing = false) {
         const title = document.getElementById('doc-title').value;
-        const content = this.editor.innerHTML;
+        const content = UI.sanitizeRichHTML(this.editor.innerHTML);
+        this.editor.innerHTML = content;
 
         let docHash = null;
         if (isPublishing) {
