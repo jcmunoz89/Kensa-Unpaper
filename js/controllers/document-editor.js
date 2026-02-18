@@ -16,6 +16,12 @@ const DocumentEditorController = {
         this.editor = document.getElementById('editor-content');
         this.tenantId = Auth.getTenantId();
         this.scope = this.tenantId ? Storage.tenantScope(this.tenantId) : null;
+        this.missingDealWarned = false;
+
+        if (!this.editor) {
+            UI.showToast('No se encontró el editor de documentos.', 'error');
+            return;
+        }
 
         if (docId) {
             this.currentDoc = Store.getById('documents', docId);
@@ -39,7 +45,9 @@ const DocumentEditorController = {
             });
         });
 
-        document.getElementById('btn-save').addEventListener('click', () => this.save(false));
+        document.getElementById('btn-save').addEventListener('click', async () => {
+            await this.save(false);
+        });
 
         document.getElementById('btn-publish').addEventListener('click', () => {
             if (confirm('¿Está seguro? Al publicar, el documento no se podrá editar y se generará un hash único.')) {
@@ -82,50 +90,92 @@ const DocumentEditorController = {
         document.execCommand('insertText', false, text);
     },
 
-    async save(isPublishing = false) {
-        const title = document.getElementById('doc-title').value;
-        const content = UI.sanitizeRichHTML(this.editor.innerHTML);
-        this.editor.innerHTML = content;
-
-        let docHash = null;
-        if (isPublishing) {
+    async computeHash(content) {
+        if (window.crypto?.subtle?.digest) {
             const msgBuffer = new TextEncoder().encode(content);
             const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
-            docHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        const data = {
-            title,
-            content,
-            dealId: this.dealId || (this.currentDoc ? this.currentDoc.dealId : null),
-            status: isPublishing ? 'published' : 'draft',
-            hash: docHash,
-            version: this.currentDoc ? this.currentDoc.version + (isPublishing ? 1 : 0) : 1
-        };
-
-        if (this.currentDoc) {
-            this.currentDoc = Store.update('documents', this.currentDoc.id, data);
-        } else {
-            this.currentDoc = Store.add('documents', data);
+        // Fallback no criptográfico para navegadores sin SubtleCrypto.
+        let hash = 0;
+        for (let i = 0; i < content.length; i += 1) {
+            hash = ((hash << 5) - hash) + content.charCodeAt(i);
+            hash |= 0;
         }
+        return `fallback_${Math.abs(hash)}_${Date.now()}`;
+    },
 
-        if (isPublishing && this.scope) {
-            Storage.add(this.scope, 'document_versions', {
-                documentId: this.currentDoc.id,
-                dealId: data.dealId,
-                title: data.title,
-                version: data.version,
+    async save(isPublishing = false) {
+        try {
+            const title = document.getElementById('doc-title').value.trim();
+            const content = UI.sanitizeRichHTML(this.editor.innerHTML).trim();
+
+            if (!title) {
+                UI.showToast('Debes ingresar un título para el documento.', 'warning');
+                return null;
+            }
+            if (!content) {
+                UI.showToast('El documento está vacío.', 'warning');
+                return null;
+            }
+
+            this.editor.innerHTML = content;
+            const resolvedDealId = this.dealId || (this.currentDoc ? this.currentDoc.dealId : null) || null;
+
+            if (isPublishing && !resolvedDealId && !this.missingDealWarned) {
+                this.missingDealWarned = true;
+                UI.showToast('Publicando sin negocio asociado. Para crear trámite desde Negocios, abre este editor desde el deal.', 'warning');
+            }
+
+            let docHash = null;
+            if (isPublishing) {
+                docHash = await this.computeHash(content);
+            }
+
+            const currentVersion = Number(this.currentDoc?.version) || 1;
+            const nextVersion = this.currentDoc
+                ? (isPublishing && this.currentDoc.status === 'published' ? currentVersion + 1 : currentVersion)
+                : 1;
+
+            const data = {
+                title,
+                content,
+                dealId: resolvedDealId,
+                status: isPublishing ? 'published' : 'draft',
                 hash: docHash,
-                content: content,
-                status: 'published',
-                createdBy: Auth.getSession()?.uid || 'system'
-            });
-            Audit.append(this.tenantId, { action: 'DOCUMENT_PUBLISHED', meta: { documentId: this.currentDoc.id, version: data.version } });
-        }
+                version: nextVersion
+            };
 
-        this.updateStatusUI(this.currentDoc);
-        UI.showToast(isPublishing ? 'Documento Publicado y Bloqueado' : 'Borrador guardado', 'success');
+            if (this.currentDoc) {
+                this.currentDoc = Store.update('documents', this.currentDoc.id, data);
+            } else {
+                this.currentDoc = Store.add('documents', data);
+            }
+
+            if (isPublishing && this.scope) {
+                Storage.add(this.scope, 'document_versions', {
+                    documentId: this.currentDoc.id,
+                    dealId: data.dealId,
+                    title: data.title,
+                    version: data.version,
+                    hash: docHash,
+                    content: content,
+                    status: 'published',
+                    createdBy: Auth.getSession()?.uid || 'system'
+                });
+                Audit.append(this.tenantId, { action: 'DOCUMENT_PUBLISHED', meta: { documentId: this.currentDoc.id, version: data.version } });
+            }
+
+            this.updateStatusUI(this.currentDoc);
+            UI.showToast(isPublishing ? 'Documento Publicado y Bloqueado' : 'Borrador guardado', 'success');
+            return this.currentDoc;
+        } catch (err) {
+            console.error('Error saving document:', err);
+            UI.showToast('No se pudo publicar el documento. Revisa la consola para más detalle.', 'error');
+            return null;
+        }
     },
 
     updateStatusUI(doc) {

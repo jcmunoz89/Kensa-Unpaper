@@ -102,6 +102,15 @@ const DealDetailController = {
                 }
 
                 if (!versionRef) {
+                    const fallbackVersions = Storage.list(scope, 'document_versions').filter(v => !v.dealId && !v.voidedAt);
+                    const fallbackLatest = fallbackVersions.sort((a, b) => (b.version || 0) - (a.version || 0))[0];
+                    if (fallbackLatest) {
+                        versionRef = fallbackLatest;
+                        UI.showToast('Se usará una versión publicada sin negocio asociado. Recomendado: volver a publicar desde este negocio.', 'warning');
+                    }
+                }
+
+                if (!versionRef) {
                     UI.showToast('Debe publicar un documento antes de crear el trámite', 'warning');
                     return;
                 }

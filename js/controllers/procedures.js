@@ -165,6 +165,24 @@ const ProceduresController = {
         if (versions.length > 0) return versions;
 
         const docs = Store.getAll('documents').filter(d => d.dealId === dealId && d.status === 'published');
+        if (docs.length > 0) {
+            return docs.map(d => ({
+                id: d.id,
+                title: d.title,
+                version: d.version,
+                hash: d.hash
+            }));
+        }
+
+        // Fallback para datos legacy: versiones publicadas sin dealId asociado.
+        const unlinked = Storage.list(scope, 'document_versions').filter(v => !v.dealId && !v.voidedAt);
+        if (unlinked.length > 0) {
+            return unlinked.map(v => ({
+                ...v,
+                title: `${v.title || 'Documento'} (sin negocio)`
+            }));
+        }
+
         return docs.map(d => ({
             id: d.id,
             title: d.title,
